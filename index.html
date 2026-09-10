@@ -4,183 +4,195 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Commission Calculator</title>
-<meta name="description" content="Configurable sales commission calculator with a full audit trail.">
+<meta name="description" content="Configurable commission calculator — deal-level data, custom rules, full audit trail.">
 <style>
 :root{
-  --paper:#f4f1ea;
-  --surface:#fffdf7;
-  --surface-2:#eef1ea;
-  --ink:#16261d;
-  --ink-2:#3d4a42;
-  --muted:#727b73;
-  --green:#1f4d38;
-  --green-2:#2d6b4d;
-  --line:#dfd9cd;
-  --line-2:#ebe6db;
-  --amber:#a8672c;
-  --amber-bg:#f7ecdd;
-  --red:#8f3a2f;
-  --serif:'Iowan Old Style','Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif;
+  --bg:#07080a;
+  --surface:#101317;
+  --surface-2:#171b21;
+  --surface-3:#1e242b;
+  --line:#252c34;
+  --line-2:#1c2229;
+  --ink:#e9edf1;
+  --ink-2:#b9c3cc;
+  --muted:#7e8a95;
+  --blue:#4b9cd3;
+  --blue-2:#7bafd4;
+  --blue-3:#a9cce6;
+  --blue-dim:rgba(75,156,211,.13);
+  --blue-line:rgba(75,156,211,.32);
+  --amber:#d9a441;
+  --amber-bg:rgba(217,164,65,.1);
+  --red:#e0705f;
+  --red-bg:rgba(224,112,95,.1);
   --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif;
+  --serif:'Iowan Old Style','Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif;
   --mono:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;
   --r:14px;
 }
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;background:var(--bg)}
 body{
-  margin:0;
-  background:var(--paper);
-  background-image:repeating-linear-gradient(180deg,transparent 0 31px,rgba(22,38,29,.035) 31px 32px);
-  color:var(--ink);
-  font-family:var(--sans);
-  font-size:15px;
-  line-height:1.5;
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:15px;line-height:1.5;
+  background-image:radial-gradient(900px 500px at 78% -8%,rgba(75,156,211,.10),transparent 62%);
+  background-repeat:no-repeat;
 }
-.wrap{max-width:1240px;margin:0 auto;padding-inline:24px}
-a{color:var(--green);text-decoration:none}
+.wrap{max-width:1280px;margin:0 auto;padding-inline:24px}
+a{color:var(--blue)}
 
 /* ---------- header ---------- */
-header{border-bottom:1px solid var(--line);background:rgba(244,241,234,.92);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20}
-.hd{display:flex;align-items:center;gap:16px;padding-block:14px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:10px;font-weight:650;font-size:16px;margin-right:auto}
-.mark{width:30px;height:30px;border-radius:9px;background:var(--green);display:grid;place-items:center;color:#fff;font-family:var(--mono);font-size:14px}
+header{border-bottom:1px solid var(--line-2);background:rgba(7,8,10,.86);backdrop-filter:blur(10px);position:sticky;top:0;z-index:30}
+.hd{display:flex;align-items:center;gap:10px;padding-block:13px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:650;font-size:15.5px;margin-right:auto;letter-spacing:-.01em}
+.mark{width:29px;height:29px;border-radius:9px;background:var(--blue);display:grid;place-items:center;color:#04121c;font-family:var(--mono);font-size:14px;font-weight:700}
 .btn{
-  font:inherit;font-size:13.5px;font-weight:550;cursor:pointer;
-  border:1px solid var(--line);background:var(--surface);color:var(--ink);
-  padding:9px 14px;border-radius:10px;display:inline-flex;align-items:center;gap:7px;
-  transition:background .15s,border-color .15s,transform .1s;
+  font:inherit;font-size:13px;font-weight:550;cursor:pointer;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink-2);
+  padding:8px 13px;border-radius:9px;display:inline-flex;align-items:center;gap:7px;
+  transition:background .15s,border-color .15s,color .15s,transform .1s;
 }
-.btn:hover{background:#fff;border-color:#cfc7b8}
+.btn:hover{background:var(--surface-2);border-color:#33404b;color:var(--ink)}
 .btn:active{transform:translateY(1px)}
-.btn.dark{background:var(--ink);border-color:var(--ink);color:#fff}
-.btn.dark:hover{background:#0d1a13}
+.btn.blue{background:var(--blue);border-color:var(--blue);color:#04121c;font-weight:650}
+.btn.blue:hover{background:var(--blue-2);border-color:var(--blue-2);color:#04121c}
 .btn.sm{padding:6px 10px;font-size:12.5px;border-radius:8px}
-.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
-.btn.ghost:hover{background:var(--surface-2);color:var(--ink)}
-.btn.danger:hover{color:var(--red);border-color:#e2c4bd}
+.btn:disabled{opacity:.45;cursor:not-allowed}
 
 /* ---------- hero ---------- */
-.hero{padding-block:64px 34px}
-.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--green-2);margin:0 0 14px}
-h1{font-family:var(--serif);font-weight:400;font-size:clamp(38px,6.4vw,72px);line-height:1.02;letter-spacing:-.02em;margin:0}
+.hero{padding-block:60px 30px}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--blue);margin:0 0 14px}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(36px,6vw,66px);line-height:1.03;letter-spacing:-.02em;margin:0}
+h1 em{font-style:normal;color:var(--blue)}
 .hero-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:40px;align-items:end}
-.lede{color:var(--ink-2);font-size:16.5px;max-width:46ch;margin:0}
+.lede{color:var(--ink-2);font-size:16px;max-width:48ch;margin:0}
 
 /* ---------- result banner ---------- */
 .result{
-  background:var(--green);color:#f2f7f3;border-radius:20px;padding:30px 34px;margin-top:32px;
-  display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:28px;align-items:center;
+  border:1px solid var(--blue-line);border-radius:20px;padding:30px 34px;margin-top:32px;
+  background:linear-gradient(135deg,rgba(75,156,211,.16),rgba(75,156,211,.03) 55%,transparent),var(--surface);
+  display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:28px;align-items:center;
   position:relative;overflow:hidden;
 }
-.result::after{
-  content:"";position:absolute;right:-90px;top:-140px;width:420px;height:420px;border-radius:50%;
-  border:70px solid rgba(255,255,255,.045);pointer-events:none;
-}
-.result .lbl{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;opacity:.72;margin:0 0 6px}
-.big{font-family:var(--serif);font-size:clamp(44px,7vw,76px);line-height:1;letter-spacing:-.02em;margin:0}
-.result .sub{margin:14px 0 0;font-size:13.5px;opacity:.78;font-family:var(--mono)}
-.result-side{border-left:1px solid rgba(255,255,255,.22);padding-left:28px;position:relative;z-index:1}
-.result-side .val{font-family:var(--serif);font-size:clamp(26px,3.4vw,38px);margin:4px 0 0;letter-spacing:-.01em}
-.result-side .cap{font-size:12.5px;opacity:.72;margin:6px 0 0}
+.result::after{content:"";position:absolute;right:-110px;top:-160px;width:440px;height:440px;border-radius:50%;border:64px solid rgba(75,156,211,.06);pointer-events:none}
+.lbl{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.big{font-family:var(--serif);font-size:clamp(42px,7vw,74px);line-height:1;letter-spacing:-.025em;margin:0;color:var(--blue)}
+.result .sub{margin:14px 0 0;font-size:13px;color:var(--ink-2);font-family:var(--mono)}
+.result-side{border-left:1px solid var(--line);padding-left:28px;position:relative;z-index:1;display:grid;gap:16px}
+.result-side .val{font-family:var(--mono);font-size:20px;font-weight:600;margin:3px 0 0;letter-spacing:-.01em}
 
-/* ---------- sections ---------- */
-section{margin-top:26px}
-.card{background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r);padding:28px;min-width:0}
-.sec-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:22px;flex-wrap:wrap}
-.num{font-family:var(--mono);font-size:12px;color:var(--green-2);padding-top:9px}
-.sec-head h2{font-family:var(--serif);font-weight:400;font-size:27px;margin:0;letter-spacing:-.01em}
-.sec-head .note{margin-left:auto;color:var(--muted);font-size:13px;text-align:right;max-width:38ch}
+/* ---------- sections / cards ---------- */
+section{margin-top:22px}
+.card{background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r);padding:26px;min-width:0}
+.sec-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:8px;flex-wrap:wrap}
+.num{font-family:var(--mono);font-size:11.5px;color:var(--blue);padding-top:9px}
+.sec-head h2{font-family:var(--serif);font-weight:400;font-size:26px;margin:0;letter-spacing:-.01em}
 .sec-head .tools{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.sec-note{color:var(--muted);font-size:13px;margin:0 0 20px;max-width:82ch}
+.rule{height:1px;background:var(--line-2);margin:22px 0}
 
 /* ---------- fields ---------- */
-.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:18px 20px}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px 18px}
 .f{min-width:0}
-.f > label{display:block;font-weight:600;font-size:13.5px;margin-bottom:7px}
-.f .hint{color:var(--muted);font-size:12px;margin-top:6px;font-family:var(--mono)}
-.ipt{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden}
-.ipt:focus-within{border-color:var(--green-2);box-shadow:0 0 0 3px rgba(45,107,77,.12)}
-.ipt .pre{display:grid;place-items:center;width:36px;background:var(--surface-2);border-right:1px solid var(--line);font-family:var(--mono);font-size:13px;color:var(--muted);flex:none}
-input,select,textarea{font:inherit;color:var(--ink);border:0;background:transparent;width:100%;padding:10px 12px;min-width:0}
+.f > label{display:block;font-weight:600;font-size:13px;margin-bottom:6px;color:var(--ink-2)}
+.f .hint{color:var(--muted);font-size:11.5px;margin-top:6px;font-family:var(--mono)}
+.ipt{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:9px;background:var(--surface-2);overflow:hidden}
+.ipt:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px rgba(75,156,211,.16)}
+.ipt .pre{display:grid;place-items:center;width:34px;background:var(--surface-3);border-right:1px solid var(--line);font-family:var(--mono);font-size:13px;color:var(--muted);flex:none}
+input,select,textarea{font:inherit;color:var(--ink);border:0;background:transparent;width:100%;padding:9px 11px;min-width:0}
 input:focus,select:focus,textarea:focus{outline:none}
-input[type=number]{font-family:var(--mono)}
-select{-webkit-appearance:none;appearance:none;cursor:pointer;padding-right:32px;
-  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23727b73' stroke-width='1.6'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 12px center}
-select.bare{border:1px solid var(--line);border-radius:10px;background-color:#fff}
-.seg{display:flex;background:var(--surface-2);border-radius:10px;padding:3px;gap:3px}
-.seg button{flex:1;font:inherit;font-size:13px;font-weight:550;border:0;border-radius:8px;padding:8px 6px;background:transparent;color:var(--muted);cursor:pointer}
-.seg button[aria-pressed=true]{background:#fff;color:var(--green);box-shadow:0 1px 2px rgba(0,0,0,.06)}
-.rule{height:1px;background:var(--line-2);margin:24px 0}
+input[type=number],input[type=date]{font-family:var(--mono);font-size:13.5px}
+input::placeholder{color:#5c666f}
+select{-webkit-appearance:none;appearance:none;cursor:pointer;padding-right:30px;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237e8a95' stroke-width='1.6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center}
+select.bare{border:1px solid var(--line);border-radius:9px;background-color:var(--surface-2)}
+select option{background:#12161a;color:var(--ink)}
+.iconbtn{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:15px;line-height:1;padding:6px 8px;border-radius:6px}
+.iconbtn:hover{background:var(--red-bg);color:var(--red)}
+.iconbtn.mv:hover{background:var(--blue-dim);color:var(--blue)}
 
-/* ---------- component cards ---------- */
-.comp{border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:16px;background:#fffefb}
-.comp-top{display:flex;gap:12px;align-items:center;margin-bottom:16px}
-.comp-top .tag{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--green-2);background:var(--surface-2);padding:4px 8px;border-radius:6px;flex:none}
-.comp-top input.name{font-weight:600;font-size:16px;border:1px solid transparent;border-radius:8px;padding:6px 8px;background:transparent}
-.comp-top input.name:hover{border-color:var(--line)}
-.comp-top input.name:focus{border-color:var(--green-2);background:#fff}
-.comp-pay{background:var(--surface-2);border-radius:10px;padding:16px;margin-top:16px}
-.comp-pay > .ttl{font-weight:600;font-size:13px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* ---------- blocks (component / rule / table cards) ---------- */
+.blk{border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:14px;background:var(--surface-2)}
+.blk-top{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);background:var(--blue-dim);padding:4px 8px;border-radius:6px;flex:none;border:1px solid var(--blue-line)}
+.tag.grey{color:var(--muted);background:var(--surface-3);border-color:var(--line)}
+input.name{font-weight:600;font-size:15.5px;border:1px solid transparent;border-radius:8px;padding:6px 8px;background:transparent;flex:1 1 180px}
+input.name:hover{border-color:var(--line)}
+input.name:focus{border-color:var(--blue);background:var(--surface-3)}
+.inner{background:var(--bg);border:1px solid var(--line-2);border-radius:10px;padding:15px;margin-top:14px}
+.inner > .ttl{font-weight:600;font-size:12.5px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:var(--ink-2)}
+.empty{color:var(--muted);font-size:13.5px;padding:14px 0}
 
 /* ---------- tables ---------- */
 .tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-table{border-collapse:collapse;width:100%;font-size:13.5px}
-th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line-2)}
-th{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500;white-space:nowrap}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-2)}
+th{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:500;white-space:nowrap}
 td.n,th.n{text-align:right;font-family:var(--mono)}
 tbody tr:last-child td{border-bottom:0}
-.tier-tbl input{padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:#fff;font-family:var(--mono);font-size:13px;text-align:right}
-.tier-tbl td{padding:5px 6px;border-bottom:0}
-.tier-tbl th{padding-bottom:4px}
-.tier-tbl .x{width:34px}
-.iconbtn{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:6px 8px;border-radius:6px}
-.iconbtn:hover{background:#fff;color:var(--red)}
+.mini input,.mini select{padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--surface-3);font-size:12.5px}
+.mini input[type=number]{font-family:var(--mono);text-align:right}
+.mini td{padding:4px 5px;border-bottom:0;vertical-align:middle}
+.mini th{padding-bottom:4px}
+.mini .x{width:32px}
+.data-tbl td{font-family:var(--mono);font-size:12px;white-space:nowrap;color:var(--ink-2)}
+.data-tbl tbody tr:hover td{background:var(--surface-2)}
+.chip{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:5px;background:var(--surface-3);border:1px solid var(--line);color:var(--ink-2);margin:2px 4px 2px 0}
+.chip.b{background:var(--blue-dim);border-color:var(--blue-line);color:var(--blue-3)}
+
+/* ---------- dropzone ---------- */
+.drop{border:1.5px dashed var(--line);border-radius:12px;padding:28px 20px;text-align:center;background:var(--surface-2);transition:.15s}
+.drop.over{border-color:var(--blue);background:var(--blue-dim)}
+.drop p{margin:0 0 4px}
+.drop .s{color:var(--muted);font-size:12.5px}
+.filebar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.filebar .nm{font-weight:600;font-size:14px}
+.filebar .meta{font-family:var(--mono);font-size:12px;color:var(--muted)}
 
 /* ---------- statement ---------- */
-.stmt{min-width:540px}
-.stmt td{border-bottom:1px solid var(--line-2)}
-.stmt tr.total td{font-weight:700;border-top:2px solid var(--ink);border-bottom:0;padding-top:13px}
-.stmt .sub{color:var(--muted);font-size:12px;font-family:var(--mono)}
+.stmt{min-width:520px}
+.stmt tr.sec td{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--blue);padding-top:16px;border-bottom:1px solid var(--line)}
+.stmt tr.total td{font-weight:700;border-top:1px solid var(--blue-line);border-bottom:0;padding-top:12px;font-size:14.5px}
+.stmt .s2{color:var(--muted);font-size:11.5px;font-family:var(--mono);margin-top:2px}
 
 /* ---------- audit ---------- */
-.step{display:grid;grid-template-columns:32px 1fr auto;gap:14px;padding:14px 0;border-bottom:1px solid var(--line-2);align-items:baseline}
+.step{display:grid;grid-template-columns:30px 1fr auto;gap:12px;padding:12px 0;border-bottom:1px solid var(--line-2);align-items:baseline}
 .step:last-child{border-bottom:0}
-.step .sn{font-family:var(--mono);font-size:12px;color:var(--muted)}
-.step .sl{font-weight:600;font-size:14.5px;margin:0}
-.step .sf{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);margin:5px 0 0;word-break:break-word;background:var(--surface-2);padding:6px 9px;border-radius:6px;display:inline-block;max-width:100%}
-.step .sv{font-family:var(--mono);font-size:15px;font-weight:600;white-space:nowrap}
-.step.group{background:transparent;border-bottom:0;padding-bottom:2px}
-.step.group .sl{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--green-2)}
-.callout{background:var(--amber-bg);border-radius:10px;padding:13px 15px;font-size:13.5px;color:#5a3d21;display:flex;gap:10px;margin-top:18px}
+.step .sn{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.step .sl{font-weight:600;font-size:14px;margin:0}
+.step .sf{font-family:var(--mono);font-size:12px;color:var(--ink-2);margin:5px 0 0;word-break:break-word;background:var(--surface-2);padding:6px 9px;border-radius:6px;display:inline-block;max-width:100%;border:1px solid var(--line-2)}
+.step .sv{font-family:var(--mono);font-size:14px;font-weight:600;white-space:nowrap;color:var(--blue-3)}
+.step.group{border-bottom:0;padding-bottom:0;padding-top:18px}
+.step.group .sl{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue)}
+.callout{background:var(--amber-bg);border:1px solid rgba(217,164,65,.28);border-radius:10px;padding:12px 14px;font-size:13px;color:#e3c288;display:flex;gap:10px;margin-top:16px}
 .callout b{color:var(--amber)}
+.callout.err{background:var(--red-bg);border-color:rgba(224,112,95,.3);color:#f0b0a4}
+.callout.err b{color:var(--red)}
 
 /* ---------- misc ---------- */
-.kv{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--line-2);font-size:14px}
-.kv:last-child{border-bottom:0}
-.kv .k{color:var(--ink-2)}
-.kv .v{font-family:var(--mono);font-weight:600}
 .grid-2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
 .grid-2 > *{min-width:0}
-details.io{margin-top:20px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);overflow:hidden}
-details.io > summary{cursor:pointer;padding:14px 18px;font-weight:600;font-size:14px;list-style:none;display:flex;align-items:center;gap:8px}
+details.io{margin-top:16px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);overflow:hidden}
+details.io > summary{cursor:pointer;padding:13px 16px;font-weight:600;font-size:13.5px;list-style:none;display:flex;align-items:center;gap:8px;color:var(--ink-2)}
 details.io > summary::-webkit-details-marker{display:none}
-details.io > summary::before{content:"+";font-family:var(--mono);color:var(--green-2)}
+details.io > summary::before{content:"+";font-family:var(--mono);color:var(--blue)}
 details.io[open] > summary::before{content:"–"}
-details.io .body{padding:0 18px 18px}
-textarea.json{font-family:var(--mono);font-size:12px;line-height:1.5;background:#fff;border:1px solid var(--line);border-radius:10px;min-height:190px;resize:vertical;padding:12px}
-.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:10px;font-size:13.5px;opacity:0;pointer-events:none;transition:.22s;z-index:60}
+details.io .body{padding:0 16px 16px}
+textarea.json{font-family:var(--mono);font-size:11.5px;line-height:1.55;background:var(--bg);border:1px solid var(--line);border-radius:10px;min-height:200px;resize:vertical;padding:12px;color:var(--blue-3)}
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);background:var(--blue);color:#04121c;padding:11px 18px;border-radius:10px;font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:.22s;z-index:60}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .warn{color:var(--red);font-size:12.5px;margin-top:8px;font-family:var(--mono)}
-footer{margin-top:44px;padding-block:26px 40px;border-top:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;display:flex;gap:16px;flex-wrap:wrap}
+footer{margin-top:40px;padding-block:24px 40px;border-top:1px solid var(--line-2);color:var(--muted);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;display:flex;gap:16px;flex-wrap:wrap}
 footer .r{margin-left:auto}
+.hidden{display:none!important}
 
-@media (max-width:960px){
+@media (max-width:980px){
   .hero-grid,.result,.grid-2{grid-template-columns:1fr}
-  .result-side{border-left:0;border-top:1px solid rgba(255,255,255,.22);padding-left:0;padding-top:20px}
-  .hero{padding-block:40px 24px}
-  .card{padding:20px}
+  .result-side{border-left:0;border-top:1px solid var(--line);padding-left:0;padding-top:18px}
+  .hero{padding-block:36px 22px}
+  .card{padding:18px}
   .wrap{padding-inline:16px}
-  .sec-head .note{margin-left:0;text-align:left}
 }
 </style>
 </head>
@@ -189,9 +201,10 @@ footer .r{margin-left:auto}
 <header>
   <div class="wrap hd">
     <div class="brand"><span class="mark">%</span> Commission Calculator</div>
+    <button class="btn sm" id="btn-sample">Load sample</button>
     <button class="btn sm" id="btn-reset">Reset</button>
     <button class="btn sm" id="btn-copy-audit">Copy audit</button>
-    <button class="btn sm dark" id="btn-export">Export plan</button>
+    <button class="btn sm blue" id="btn-export">Export plan</button>
   </div>
 </header>
 
@@ -200,10 +213,10 @@ footer .r{margin-left:auto}
   <div class="hero">
     <div class="hero-grid">
       <div>
-        <p class="eyebrow">Configurable Plan Engine</p>
-        <h1>Build the plan.<br>Show the math.</h1>
+        <p class="eyebrow">Rule-driven commission engine</p>
+        <h1>Load the deals.<br><em>Show the math.</em></h1>
       </div>
-      <p class="lede">Define any commission plan — components, weights, tiers, thresholds, caps and modifiers — then see the payout and every step that produced it.</p>
+      <p class="lede">Upload deal-level data, define the rules that route each deal to its own rate table, and get a payout with every step of the calculation on the record.</p>
     </div>
 
     <div class="result">
@@ -213,9 +226,9 @@ footer .r{margin-left:auto}
         <p class="sub" id="out-summary">&nbsp;</p>
       </div>
       <div class="result-side">
-        <p class="lbl">Estimated total compensation</p>
-        <p class="val" id="out-total">$0</p>
-        <p class="cap" id="out-total-cap">Prorated base + variable</p>
+        <div><p class="lbl">Deal-based commission</p><p class="val" id="out-deals">$0</p></div>
+        <div><p class="lbl">Quota-based commission</p><p class="val" id="out-quota">$0</p></div>
+        <div><p class="lbl">Deals processed</p><p class="val" id="out-count">0</p></div>
       </div>
     </div>
   </div>
@@ -223,16 +236,13 @@ footer .r{margin-left:auto}
   <!-- 01 PLAN SETUP -->
   <section>
     <div class="card">
-      <div class="sec-head">
-        <span class="num">01</span>
-        <h2>Plan setup</h2>
-        <p class="note">Period, payee and target incentive. Everything recalculates as you type.</p>
-      </div>
+      <div class="sec-head"><span class="num">01</span><h2>Plan setup</h2></div>
+      <p class="sec-note">Period, payee and the variable opportunity at target. Everything recalculates as you type.</p>
 
       <div class="fields">
         <div class="f">
           <label for="planName">Plan name</label>
-          <div class="ipt"><input id="planName" type="text" data-path="meta.planName" placeholder="FY26 AE Plan"></div>
+          <div class="ipt"><input id="planName" type="text" data-path="meta.planName" placeholder="FY26 Sales Plan"></div>
         </div>
         <div class="f">
           <label for="periodStart">Period start</label>
@@ -256,42 +266,25 @@ footer .r{margin-left:auto}
           <div class="ipt"><input id="payeeId" type="text" data-path="payee.id" placeholder="EMP-1042"></div>
         </div>
         <div class="f">
-          <label for="baseSalary">Annual base salary</label>
-          <div class="ipt"><span class="pre">$</span><input id="baseSalary" type="number" min="0" step="1000" data-path="payee.baseSalary"></div>
-          <p class="hint">Fixed pay, before commission.</p>
+          <label for="targetIncentive">Variable at target</label>
+          <div class="ipt"><span class="pre">$</span><input id="targetIncentive" type="number" min="0" step="1000" data-path="payee.targetIncentive" data-type="number"></div>
+          <p class="hint">Opportunity for quota-based components.</p>
         </div>
         <div class="f">
           <label for="hireDate">On plan from</label>
           <div class="ipt"><input id="hireDate" type="date" data-path="payee.startDate"></div>
-          <p class="hint" id="hint-hire">Blank = full period.</p>
+          <p class="hint">Blank = start of period.</p>
         </div>
         <div class="f">
           <label for="termDate">On plan through</label>
           <div class="ipt"><input id="termDate" type="date" data-path="payee.endDate"></div>
           <p class="hint">Blank = end of period.</p>
         </div>
-      </div>
-
-      <div class="rule"></div>
-
-      <div class="fields">
-        <div class="f">
-          <label>Target incentive</label>
-          <div class="seg" id="seg-ti">
-            <button type="button" data-val="percent">Percent of base</button>
-            <button type="button" data-val="amount">Direct amount</button>
-          </div>
-        </div>
-        <div class="f" id="wrap-ti">
-          <label for="tiValue" id="lbl-ti">Variable percentage</label>
-          <div class="ipt"><span class="pre" id="pre-ti">%</span><input id="tiValue" type="number" min="0" step="1" data-path="payee.targetIncentive.value"></div>
-          <p class="hint" id="hint-ti"></p>
-        </div>
         <div class="f">
           <label for="prorate">Prorate for time on plan</label>
-          <select id="prorate" class="bare" data-path="payee.prorate">
-            <option value="true">Yes — prorate target &amp; quota by days</option>
-            <option value="false">No — full period regardless</option>
+          <select id="prorate" class="bare" data-path="payee.prorate" data-type="bool">
+            <option value="true">Yes — prorate target &amp; quota</option>
+            <option value="false">No — full period</option>
           </select>
           <p class="hint" id="hint-prorate"></p>
         </div>
@@ -299,82 +292,147 @@ footer .r{margin-left:auto}
     </div>
   </section>
 
-  <!-- 02 COMPONENTS -->
+  <!-- 02 DEAL DATA -->
   <section>
     <div class="card">
       <div class="sec-head">
-        <span class="num">02</span>
-        <h2>Commission components</h2>
+        <span class="num">02</span><h2>Deal data</h2>
         <div class="tools">
-          <button class="btn sm" id="btn-add-comp">+ Add component</button>
+          <button class="btn sm" id="btn-paste">Paste CSV</button>
+          <button class="btn sm" id="btn-pick">Choose file</button>
+          <button class="btn sm" id="btn-clear-data">Clear</button>
         </div>
       </div>
-      <p class="note" style="color:var(--muted);font-size:13px;margin:-10px 0 20px">Each component carries a weight of the target incentive and its own payout curve. Weights should total 100%.</p>
+      <p class="sec-note">Upload a CSV where each row is one deal. The first row must be column headers. Rules below read these column names.</p>
+      <input type="file" id="file-input" accept=".csv,.txt,text/csv" class="hidden">
+
+      <div id="drop" class="drop">
+        <p><strong>Drop a CSV here</strong></p>
+        <p class="s">or use “Choose file” / “Paste CSV” above</p>
+      </div>
+
+      <div id="data-loaded" class="hidden">
+        <div class="filebar">
+          <span class="nm" id="data-name">deals.csv</span>
+          <span class="meta" id="data-meta"></span>
+        </div>
+        <div style="margin-top:12px" id="data-cols"></div>
+        <details class="io" open>
+          <summary>Preview rows</summary>
+          <div class="body">
+            <div class="tbl-scroll"><table class="data-tbl" id="data-preview"></table></div>
+          </div>
+        </details>
+      </div>
+
+      <details class="io" id="paste-box" hidden>
+        <summary>Paste CSV text</summary>
+        <div class="body">
+          <textarea class="json" id="paste-area" spellcheck="false" placeholder="Deal ID,Deal Type,Deal Value&#10;D-001,Succession,240000"></textarea>
+          <div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm blue" id="btn-paste-load">Load rows</button></div>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- 03 RATE TABLES -->
+  <section>
+    <div class="card">
+      <div class="sec-head">
+        <span class="num">03</span><h2>Rate tables</h2>
+        <div class="tools">
+          <button class="btn sm" data-add-rt="value">+ Deal-value table</button>
+          <button class="btn sm" data-add-rt="attainment">+ Attainment table</button>
+        </div>
+      </div>
+      <p class="sec-note">Reusable tier tables. <strong>Deal-value</strong> tables tier on the size of a single deal and are used by rules. <strong>Attainment</strong> tables tier on percent-of-quota and are used by quota components. Give each one a name — rules reference them by name.</p>
+      <div id="rt-list"></div>
+    </div>
+  </section>
+
+  <!-- 04 RULES -->
+  <section>
+    <div class="card">
+      <div class="sec-head">
+        <span class="num">04</span><h2>Rules</h2>
+        <div class="tools"><button class="btn sm" id="btn-add-rule">+ Add rule</button></div>
+      </div>
+      <p class="sec-note">Each deal is tested against these rules top to bottom and the <strong>first match wins</strong>. A rule with no conditions matches everything — keep one at the bottom as a catch-all. This is the section the agent will write for you from a plan document.</p>
+      <div id="rule-list"></div>
+      <p class="warn" id="rule-warn" hidden></p>
+    </div>
+  </section>
+
+  <!-- 05 QUOTA COMPONENTS -->
+  <section>
+    <div class="card">
+      <div class="sec-head">
+        <span class="num">05</span><h2>Quota components</h2>
+        <div class="tools"><button class="btn sm" id="btn-add-comp">+ Add component</button></div>
+      </div>
+      <p class="sec-note">Optional. For plans where part of the variable is earned against a quota rather than per deal. Weights are shares of the variable-at-target amount and should total 100%.</p>
       <div id="comp-list"></div>
       <p class="warn" id="weight-warn" hidden></p>
     </div>
   </section>
 
-  <!-- 03 MODIFIERS -->
+  <!-- 06 MODIFIERS -->
   <section>
     <div class="card">
       <div class="sec-head">
-        <span class="num">03</span>
-        <h2>Modifiers</h2>
-        <div class="tools">
-          <button class="btn sm" id="btn-add-mod">+ Add modifier</button>
-        </div>
+        <span class="num">06</span><h2>Modifiers</h2>
+        <div class="tools"><button class="btn sm" id="btn-add-mod">+ Add modifier</button></div>
       </div>
-      <p class="note" style="color:var(--muted);font-size:13px;margin:-10px 0 20px">Multipliers applied to the combined payout — quality scores, adherence ratings, manager discretion, plan-level caps.</p>
+      <p class="sec-note">Multipliers applied after everything else — quality scores, adherence ratings, manager discretion. Each can target deal commission, quota commission, or both.</p>
       <div id="mod-list"></div>
     </div>
   </section>
 
-  <!-- 04 STATEMENT -->
+  <!-- 07 / 08 STATEMENT + AUDIT -->
   <section>
     <div class="grid-2">
       <div class="card">
-        <div class="sec-head">
-          <span class="num">04</span>
-          <h2>Commission statement</h2>
-        </div>
-        <div class="tbl-scroll">
-          <table class="stmt" id="stmt"></table>
-        </div>
+        <div class="sec-head"><span class="num">07</span><h2>Commission statement</h2></div>
+        <div class="tbl-scroll"><table class="stmt" id="stmt"></table></div>
       </div>
-
       <div class="card">
-        <div class="sec-head">
-          <span class="num">05</span>
-          <h2>Audit trail</h2>
-        </div>
+        <div class="sec-head"><span class="num">08</span><h2>Audit trail</h2></div>
         <div id="audit"></div>
-        <div class="callout">
-          <span>ⓘ</span>
-          <div><b>Every figure is traceable.</b> Each step shows the formula and the values that went into it, in the order the engine applied them.</div>
-        </div>
       </div>
     </div>
   </section>
 
-  <!-- 06 PLAN JSON -->
-  <section>
+  <!-- 09 DEAL DETAIL -->
+  <section id="sec-detail">
     <div class="card">
       <div class="sec-head">
-        <span class="num">06</span>
-        <h2>Plan definition</h2>
-        <p class="note">The whole plan is one JSON object. This is the handoff point for the agent layer later.</p>
+        <span class="num">09</span><h2>Deal detail</h2>
+        <div class="tools"><button class="btn sm" id="btn-copy-detail">Copy as CSV</button></div>
       </div>
+      <p class="sec-note">Every deal, the rule it matched, and the commission it produced. This is the line-level audit.</p>
+      <div class="tbl-scroll"><table class="data-tbl" id="detail-tbl"></table></div>
+    </div>
+  </section>
+
+  <!-- 10 PLAN JSON -->
+  <section>
+    <div class="card">
+      <div class="sec-head"><span class="num">10</span><h2>Plan definition</h2></div>
+      <p class="sec-note">The plan — period, rate tables, rules, components, modifiers — is one JSON object, separate from the deal data. This is the handoff point for the agent layer: it writes this object, the engine executes it.</p>
       <details class="io">
         <summary>View / edit plan JSON</summary>
         <div class="body">
           <textarea class="json" id="json-box" spellcheck="false"></textarea>
           <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-            <button class="btn sm dark" id="btn-load-json">Load this JSON</button>
+            <button class="btn sm blue" id="btn-load-json">Load this JSON</button>
             <button class="btn sm" id="btn-copy-json">Copy</button>
             <span class="warn" id="json-warn"></span>
           </div>
         </div>
+      </details>
+      <details class="io">
+        <summary>Schema reference for the agent</summary>
+        <div class="body"><div id="schema-ref"></div></div>
       </details>
     </div>
   </section>
@@ -390,113 +448,156 @@ footer .r{margin-left:auto}
 <script>
 /* =========================================================================
    Commission Calculator
-   ---------------------------------------------------------------------
-   Architecture:
-     PLAN (json)  ->  calculate(plan)  ->  { result, audit[] }  ->  render
-   The engine is a pure function. It never touches the DOM, and every
-   number it produces is accompanied by an audit step recording the
-   formula and the inputs used. That contract is what makes the later
-   agent layer possible: an LLM can emit a PLAN, call calculate(), and
-   verify the trace without needing the UI.
+   -------------------------------------------------------------------------
+   PLAN (json) + DATA (deal rows)  ->  calculate(plan, data)  ->  { result, audit[] }
+
+   PLAN and DATA are deliberately separate. The plan holds the *logic* —
+   rate tables, rules, components, modifiers — and is what an LLM agent will
+   author from a written plan document. DATA holds the deal rows the user
+   uploads. calculate() is pure: no DOM, and every figure it emits carries an
+   audit step with the formula that produced it.
    ========================================================================= */
 
 /* ------------------------------- 1. MODEL ------------------------------ */
 
-const PAYOUT_MODES = {
-  marginal: {
-    label: 'Marginal — rate per attainment point',
-    rateHeader: 'Rate (× per point)',
-    blurb: 'Each attainment point inside a tier earns that tier’s rate. Only the points above a threshold get the higher rate.'
-  },
-  cliff: {
-    label: 'Compounding — multiplier on whole payout',
-    rateHeader: 'Multiplier',
-    blurb: 'Crossing a tier changes the multiplier applied to the entire payout, not only the amount above the threshold.'
-  },
-  flat: {
-    label: 'Flat step — fixed payout per tier',
-    rateHeader: 'Payout (× target)',
-    blurb: 'Landing anywhere inside a tier pays that fixed share of the component target.'
+const OPS = {
+  is:        { label: 'is',              needsValue: true  },
+  isnot:     { label: 'is not',          needsValue: true  },
+  contains:  { label: 'contains',        needsValue: true  },
+  notcontains:{label: 'does not contain',needsValue: true  },
+  oneof:     { label: 'is one of',       needsValue: true  },
+  gt:        { label: 'greater than',    needsValue: true  },
+  gte:       { label: 'at least',        needsValue: true  },
+  lt:        { label: 'less than',       needsValue: true  },
+  lte:       { label: 'at most',         needsValue: true  },
+  between:   { label: 'between (a, b)',  needsValue: true  },
+  blank:     { label: 'is blank',        needsValue: false },
+  notblank:  { label: 'is not blank',    needsValue: false }
+};
+
+const ACTIONS = {
+  rateTable: 'Apply a rate table',
+  percent:   'Pay a flat percent of the measure',
+  fixed:     'Pay a fixed amount per deal',
+  exclude:   'Pay nothing (exclude the deal)'
+};
+
+/* Column headers for a rate table's tier grid, by basis + mode. */
+function tierHeaders(rt) {
+  if (rt.basis === 'attainment') {
+    return { from: 'From %', to: 'To %', rate:
+      rt.mode === 'marginal' ? 'Rate (× per point)' :
+      rt.mode === 'cliff'    ? 'Multiplier' : 'Payout (× target)' };
   }
+  return { from: 'From $', to: 'To $', rate:
+    rt.mode === 'marginal' ? 'Rate % (of amount in band)' :
+    rt.mode === 'cliff'    ? 'Rate % (of whole deal)' : 'Amount $ (per deal)' };
+}
+
+const MODE_LABELS = {
+  value:      { marginal: 'Marginal / banded',  cliff: 'Whole-deal rate',     flat: 'Flat amount per band' },
+  attainment: { marginal: 'Marginal / tiered',  cliff: 'Whole-payout multiplier', flat: 'Flat payout per tier' }
+};
+
+const MODE_BLURB = {
+  'value.marginal':      'Each dollar of the deal inside a band earns that band’s rate. Only the amount above a break gets the higher rate.',
+  'value.cliff':         'The band the deal lands in sets one rate, applied to the entire deal value.',
+  'value.flat':          'Any deal landing in a band pays that flat dollar amount, regardless of size.',
+  'attainment.marginal': 'Each attainment point inside a tier earns that tier’s rate. Only points above a break get the accelerator.',
+  'attainment.cliff':    'Crossing a tier changes the multiplier applied to the entire payout, not only the amount above it.',
+  'attainment.flat':     'Landing anywhere in a tier pays that fixed share of the component target.'
 };
 
 function defaultPlan() {
   return {
-    version: 1,
-    meta: {
-      planName: 'FY26 Account Executive Plan',
-      periodStart: '2026-01-01',
-      periodEnd: '2026-12-31'
-    },
-    payee: {
-      name: 'Jordan Blake',
-      id: 'EMP-1042',
-      baseSalary: 80000,
-      startDate: '',
-      endDate: '',
-      prorate: true,
-      targetIncentive: { mode: 'percent', value: 20 }
-    },
-    components: [
-      {
-        id: 'c1', name: 'New business ARR', weight: 70,
-        quota: 600000, actual: 510000, prorateQuota: true,
-        payout: {
-          mode: 'marginal', thresholdPct: 0, capPct: 250,
-          tiers: [
-            { from: 0,   to: 100,  rate: 1 },
-            { from: 100, to: 150,  rate: 1.5 },
-            { from: 150, to: null, rate: 2 }
-          ]
-        }
-      },
-      {
-        id: 'c2', name: 'Renewal ARR', weight: 30,
-        quota: 400000, actual: 392000, prorateQuota: true,
-        payout: {
-          mode: 'cliff', thresholdPct: 60, capPct: null,
-          tiers: [
-            { from: 0,   to: 50,   rate: 0.5 },
-            { from: 50,  to: 75,   rate: 0.75 },
-            { from: 75,  to: 100,  rate: 1 },
-            { from: 100, to: 125,  rate: 1.2 },
-            { from: 125, to: null, rate: 1.35 }
-          ]
-        }
-      }
+    version: 2,
+    meta: { planName: 'FY26 Practice Development Plan', periodStart: '2026-01-01', periodEnd: '2026-12-31' },
+    payee: { name: 'Jordan Blake', id: 'EMP-1042', startDate: '', endDate: '', prorate: true, targetIncentive: 40000 },
+
+    rateTables: [
+      { id: 'rt-succession', name: 'Succession — deal value', basis: 'value', mode: 'marginal',
+        tiers: [ { from: 0, to: 250000, rate: 4 }, { from: 250000, to: 500000, rate: 5 }, { from: 500000, to: null, rate: 6 } ] },
+      { id: 'rt-transition', name: 'Transition — deal value', basis: 'value', mode: 'cliff',
+        tiers: [ { from: 0, to: 200000, rate: 3 }, { from: 200000, to: 400000, rate: 3.5 }, { from: 400000, to: null, rate: 4 } ] },
+      { id: 'rt-fullbuild', name: 'Full Build — flat per deal', basis: 'value', mode: 'flat',
+        tiers: [ { from: 0, to: 300000, rate: 5000 }, { from: 300000, to: null, rate: 9000 } ] },
+      { id: 'rt-quota', name: 'Standard quota curve', basis: 'attainment', mode: 'marginal',
+        tiers: [ { from: 0, to: 100, rate: 1 }, { from: 100, to: 150, rate: 1.5 }, { from: 150, to: null, rate: 2 } ] }
     ],
+
+    rules: [
+      { id: 'r1', name: 'Succession deals', enabled: true, match: 'all',
+        conditions: [ { field: 'Deal Type', op: 'is', value: 'Succession' } ],
+        action: { type: 'rateTable', measureField: 'Deal Value', rateTableId: 'rt-succession', percent: 0, amount: 0, creditPctField: 'Credit %' } },
+      { id: 'r2', name: 'Transition deals', enabled: true, match: 'all',
+        conditions: [ { field: 'Deal Type', op: 'is', value: 'Transition' } ],
+        action: { type: 'rateTable', measureField: 'Deal Value', rateTableId: 'rt-transition', percent: 0, amount: 0, creditPctField: 'Credit %' } },
+      { id: 'r3', name: 'Full Build deals', enabled: true, match: 'all',
+        conditions: [ { field: 'Deal Type', op: 'is', value: 'Full Build' } ],
+        action: { type: 'rateTable', measureField: 'Deal Value', rateTableId: 'rt-fullbuild', percent: 0, amount: 0, creditPctField: 'Credit %' } },
+      { id: 'r4', name: 'Everything else', enabled: true, match: 'all',
+        conditions: [],
+        action: { type: 'percent', measureField: 'Deal Value', rateTableId: '', percent: 2, amount: 0, creditPctField: 'Credit %' } }
+    ],
+
+    components: [
+      { id: 'c1', name: 'Annual production', weight: 100, quota: 2500000,
+        actualSource: 'sum', actualField: 'Deal Value', actual: 0, prorateQuota: true,
+        payout: { rateTableId: 'rt-quota', thresholdPct: 0, capPct: 250 } }
+    ],
+
     modifiers: [
-      {
-        id: 'm1', name: 'Adherence rating', selected: 1,
+      { id: 'm1', name: 'Adherence rating', appliesTo: 'all', selected: 1,
         options: [
           { label: '5 — Excellent', factor: 1 },
           { label: '4 — Good', factor: 0.9 },
           { label: '3 — Satisfactory', factor: 0.75 },
           { label: '2 — Needs improvement', factor: 0.5 },
           { label: '1 — Unsatisfactory', factor: 0.25 }
-        ]
-      }
+        ] }
     ]
   };
 }
 
+const SAMPLE_CSV =
+`Deal ID,Practice,Deal Type,Close Date,Deal Value,Credit %
+D-1001,Harborview Family Medicine,Succession,2026-02-14,310000,100
+D-1002,Cedar Park Internal Medicine,Transition,2026-03-02,185000,100
+D-1003,Lakeshore Primary Care,Full Build,2026-03-27,420000,50
+D-1004,Northgate Medical Group,Succession,2026-05-11,240000,100
+D-1005,Ridgeline Health Partners,Transition,2026-06-08,415000,100
+D-1006,Summit Family Care,Full Build,2026-07-19,265000,100
+D-1007,Baywood Clinic,Succession,2026-09-01,560000,100
+D-1008,Elmwood Associates,Referral,2026-09-22,95000,100`;
+
 let PLAN = defaultPlan();
+let DATA = { name: '', columns: [], rows: [] };
 
 /* ------------------------------ 2. HELPERS ----------------------------- */
 
 const $  = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
-const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-const money = (v, d) => (v < 0 ? '-' : '') + '$' + Math.abs(v).toLocaleString('en-US', {
-  minimumFractionDigits: d == null ? 2 : d, maximumFractionDigits: d == null ? 2 : d
-});
+/* Tolerant number read: strips $ , % ( ) and treats (123) as -123 */
+function num(v) {
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  if (v == null) return 0;
+  let s = String(v).trim();
+  if (!s) return 0;
+  const neg = /^\(.*\)$/.test(s);
+  s = s.replace(/[()]/g, '').replace(/[^0-9.\-]/g, '');
+  const n = parseFloat(s);
+  if (!isFinite(n)) return 0;
+  return neg ? -n : n;
+}
+
+const money = (v, d) => (v < 0 ? '-' : '') + '$' + Math.abs(v).toLocaleString('en-US',
+  { minimumFractionDigits: d == null ? 2 : d, maximumFractionDigits: d == null ? 2 : d });
 const money0 = v => money(v, 0);
-const pct = (v, d) => v.toLocaleString('en-US', {
-  minimumFractionDigits: d == null ? 1 : d, maximumFractionDigits: d == null ? 1 : d
-}) + '%';
+const pct = (v, d) => v.toLocaleString('en-US',
+  { minimumFractionDigits: d == null ? 1 : d, maximumFractionDigits: d == null ? 1 : d }) + '%';
 const mult = v => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + '×';
 
 const MS_DAY = 86400000;
@@ -513,36 +614,173 @@ const fmtDate = s => {
   return d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '—';
 };
 
-/* Read/write a dotted path on the plan object: "components.0.payout.capPct" */
-function getPath(obj, path) {
-  return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
-}
+function getPath(obj, path) { return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj); }
 function setPath(obj, path, value) {
-  const keys = path.split('.');
-  const last = keys.pop();
+  const keys = path.split('.'); const last = keys.pop();
   let o = obj;
   for (const k of keys) { if (o[k] == null) o[k] = {}; o = o[k]; }
   o[last] = value;
 }
+const uid = p => p + '-' + Math.random().toString(36).slice(2, 8);
+
+/* --- CSV ------------------------------------------------------------- */
+function parseCSV(text) {
+  const rows = []; let row = [], cur = '', q = false;
+  text = String(text).replace(/^﻿/, '');
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; }
+      else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(cur); cur = ''; }
+    else if (c === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+    else if (c !== '\r') cur += c;
+  }
+  if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+  return rows.filter(r => r.some(x => String(x).trim() !== ''));
+}
+
+function csvToData(text, name) {
+  const grid = parseCSV(text);
+  if (!grid.length) return { name: name || '', columns: [], rows: [] };
+  const seen = {};
+  const columns = grid[0].map((h, i) => {
+    let c = String(h).trim() || ('Column ' + (i + 1));
+    if (seen[c]) { seen[c]++; c = c + ' (' + seen[c] + ')'; } else seen[c] = 1;
+    return c;
+  });
+  const rows = grid.slice(1).map(r => {
+    const o = {};
+    columns.forEach((c, i) => { o[c] = (r[i] == null ? '' : String(r[i]).trim()); });
+    return o;
+  });
+  return { name: name || 'pasted.csv', columns, rows };
+}
+
+function toCSV(cols, rows) {
+  const q = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  return [cols.map(q).join(',')].concat(rows.map(r => cols.map(c => q(r[c])).join(','))).join('\n');
+}
 
 /* ------------------------------ 3. ENGINE ------------------------------ */
-/* Pure. plan -> { ...results, audit: [step] }                             */
 
-function calculate(plan) {
-  const audit = [];
-  const warnings = [];
+/* Does one deal row satisfy one condition? */
+function testCondition(row, cond) {
+  const raw = row[cond.field];
+  const s = String(raw == null ? '' : raw).trim();
+  const v = String(cond.value == null ? '' : cond.value).trim();
+  const lc = s.toLowerCase(), lv = v.toLowerCase();
+  switch (cond.op) {
+    case 'is':          return lc === lv;
+    case 'isnot':       return lc !== lv;
+    case 'contains':    return lv !== '' && lc.includes(lv);
+    case 'notcontains': return lv === '' || !lc.includes(lv);
+    case 'oneof':       return v.split(',').map(x => x.trim().toLowerCase()).filter(Boolean).includes(lc);
+    case 'gt':          return num(raw) >  num(v);
+    case 'gte':         return num(raw) >= num(v);
+    case 'lt':          return num(raw) <  num(v);
+    case 'lte':         return num(raw) <= num(v);
+    case 'between': {
+      const p = v.split(',').map(x => num(x));
+      const lo = Math.min(p[0] || 0, p[1] || 0), hi = Math.max(p[0] || 0, p[1] || 0);
+      const n = num(raw); return n >= lo && n <= hi;
+    }
+    case 'blank':       return s === '';
+    case 'notblank':    return s !== '';
+    default:            return false;
+  }
+}
+
+function ruleMatches(row, rule) {
+  if (rule.enabled === false) return false;
+  const cs = rule.conditions || [];
+  if (!cs.length) return true;                       // catch-all
+  return rule.match === 'any' ? cs.some(c => testCondition(row, c))
+                              : cs.every(c => testCondition(row, c));
+}
+
+function describeCondition(c) {
+  const o = OPS[c.op] || OPS.is;
+  return (c.field || '?') + ' ' + o.label + (o.needsValue ? ' "' + (c.value == null ? '' : c.value) + '"' : '');
+}
+
+/* Apply a deal-value rate table to a dollar amount. Returns { amount, note } */
+function applyValueTable(rt, value) {
+  if (!rt) return { amount: 0, note: 'no rate table' };
+  const tiers = (rt.tiers || []).slice().sort((a, b) => num(a.from) - num(b.from));
+  if (rt.mode === 'cliff') {
+    const t = findTier(tiers, value);
+    const r = t ? num(t.rate) : 0;
+    return { amount: value * r / 100, note: tierLabel(t, '$') + ' @ ' + r + '%' };
+  }
+  if (rt.mode === 'flat') {
+    const t = findTier(tiers, value);
+    const r = t ? num(t.rate) : 0;
+    return { amount: r, note: tierLabel(t, '$') + ' → ' + money0(r) + ' flat' };
+  }
+  let amount = 0; const parts = [];
+  tiers.forEach(t => {
+    const from = num(t.from);
+    const to = (t.to == null || t.to === '') ? Infinity : num(t.to);
+    const span = Math.max(0, Math.min(value, to) - from);
+    if (span > 0) { amount += span * num(t.rate) / 100; parts.push(money0(span) + ' @ ' + num(t.rate) + '%'); }
+  });
+  return { amount, note: parts.join(' + ') || 'no band engaged' };
+}
+
+/* Apply an attainment rate table. Returns { payoutPct, note } */
+function applyAttainmentTable(rt, attainment) {
+  if (!rt) return { payoutPct: 0, note: 'no rate table' };
+  const tiers = (rt.tiers || []).slice().sort((a, b) => num(a.from) - num(b.from));
+  if (rt.mode === 'cliff') {
+    const t = findTier(tiers, attainment);
+    const m = t ? num(t.rate) : 0;
+    return { payoutPct: attainment * m, note: tierLabel(t, '%') + ' @ ' + mult(m) };
+  }
+  if (rt.mode === 'flat') {
+    const t = findTier(tiers, attainment);
+    const r = t ? num(t.rate) : 0;
+    return { payoutPct: r * 100, note: tierLabel(t, '%') + ' → ' + pct(r * 100, 0) };
+  }
+  let p = 0; const parts = [];
+  tiers.forEach(t => {
+    const from = num(t.from);
+    const to = (t.to == null || t.to === '') ? Infinity : num(t.to);
+    const span = Math.max(0, Math.min(attainment, to) - from);
+    if (span > 0) { p += span * num(t.rate); parts.push(span.toFixed(1) + 'pts × ' + num(t.rate)); }
+  });
+  return { payoutPct: p, note: parts.join(' + ') || 'no tier engaged' };
+}
+
+function findTier(tiers, v) {
+  for (const t of tiers) {
+    const from = num(t.from);
+    const to = (t.to == null || t.to === '') ? Infinity : num(t.to);
+    if (v >= from && v < to) return t;
+  }
+  return tiers.length ? tiers[tiers.length - 1] : null;
+}
+function tierLabel(t, unit) {
+  if (!t) return 'no tier';
+  const f = num(t.from), to = (t.to == null || t.to === '') ? null : num(t.to);
+  const fmt = unit === '$' ? (x => money0(x)) : (x => x + '%');
+  return to == null ? fmt(f) + '+' : fmt(f) + '–' + fmt(to);
+}
+
+/* ---- the calculation -------------------------------------------------- */
+function calculate(plan, data) {
+  data = data || { columns: [], rows: [] };
+  const audit = [], warnings = [];
   let n = 0;
   const group = label => audit.push({ group: true, label });
   const step = (label, formula, value, display) => {
-    audit.push({ n: ++n, label, formula, value, display });
-    return value;
+    audit.push({ n: ++n, label, formula, value, display }); return value;
   };
 
   /* --- period & proration ------------------------------------------- */
   group('Period & eligibility');
-
-  const pStart = parseDate(plan.meta.periodStart);
-  const pEnd   = parseDate(plan.meta.periodEnd);
+  const pStart = parseDate(plan.meta.periodStart), pEnd = parseDate(plan.meta.periodEnd);
   let periodDays = 0;
   if (!pStart || !pEnd) warnings.push('Plan period is incomplete — proration assumes a full period.');
   else if (pEnd < pStart) warnings.push('Period end is before period start.');
@@ -552,333 +790,467 @@ function calculate(plan) {
   let effEnd   = parseDate(plan.payee.endDate)   || pEnd;
   if (pStart && effStart < pStart) effStart = pStart;
   if (pEnd   && effEnd   > pEnd)   effEnd   = pEnd;
-
   const daysOnPlan = (effStart && effEnd && effEnd >= effStart) ? inclusiveDays(effStart, effEnd) : 0;
   const prorate = plan.payee.prorate !== false;
   const proration = (!prorate || !periodDays) ? 1 : daysOnPlan / periodDays;
 
-  step('Days in plan period',
-       plan.meta.periodStart + ' → ' + plan.meta.periodEnd,
-       periodDays, periodDays.toLocaleString() + ' days');
-
+  step('Days in plan period', plan.meta.periodStart + ' → ' + plan.meta.periodEnd, periodDays, periodDays.toLocaleString() + ' days');
   step('Days on plan',
        (effStart ? fmtDate(effStart.toISOString().slice(0, 10)) : '—') + ' → ' +
        (effEnd ? fmtDate(effEnd.toISOString().slice(0, 10)) : '—'),
        daysOnPlan, daysOnPlan.toLocaleString() + ' days');
+  step('Proration factor', prorate ? daysOnPlan + ' ÷ ' + periodDays : 'proration disabled', proration, pct(proration * 100, 2));
 
-  step('Proration factor',
-       prorate ? daysOnPlan + ' ÷ ' + periodDays : 'proration disabled',
-       proration, pct(proration * 100, 2));
+  /* --- deal-based commission ---------------------------------------- */
+  const rtById = {};
+  (plan.rateTables || []).forEach(rt => { rtById[rt.id] = rt; });
 
-  /* --- target incentive ---------------------------------------------- */
-  group('Target incentive');
+  const rules = plan.rules || [];
+  const rows = data.rows || [];
 
-  const base = num(plan.payee.baseSalary);
-  const ti = plan.payee.targetIncentive || { mode: 'percent', value: 0 };
-  const targetIncentive = ti.mode === 'percent' ? base * num(ti.value) / 100 : num(ti.value);
-
-  step('Target incentive at 100%',
-       ti.mode === 'percent'
-         ? money0(base) + ' × ' + num(ti.value) + '%'
-         : 'entered directly',
-       targetIncentive, money(targetIncentive));
-
-  const proratedTarget = targetIncentive * proration;
-  step('Prorated target incentive',
-       money(targetIncentive) + ' × ' + pct(proration * 100, 2),
-       proratedTarget, money(proratedTarget));
-
-  const proratedBase = base * proration;
-
-  /* --- components ----------------------------------------------------- */
-  const comps = [];
-  const totalWeight = (plan.components || []).reduce((s, c) => s + num(c.weight), 0);
-  if (plan.components && plan.components.length && Math.abs(totalWeight - 100) > 0.01) {
-    warnings.push('Component weights total ' + pct(totalWeight, 2) + ', not 100%.');
-  }
-
-  (plan.components || []).forEach((c, i) => {
-    group('Component ' + (i + 1) + ' · ' + (c.name || 'Untitled'));
-
-    const weight = num(c.weight);
-    const compTarget = proratedTarget * weight / 100;
-    step('Component target',
-         money(proratedTarget) + ' × ' + weight + '% weight',
-         compTarget, money(compTarget));
-
-    const quotaProration = c.prorateQuota === false ? 1 : proration;
-    const proratedQuota = num(c.quota) * quotaProration;
-    step('Prorated quota',
-         money0(num(c.quota)) + (quotaProration === 1 ? ' (not prorated)' : ' × ' + pct(quotaProration * 100, 2)),
-         proratedQuota, money0(proratedQuota));
-
-    const actual = num(c.actual);
-    let attainment = 0;
-    if (proratedQuota > 0) attainment = actual / proratedQuota * 100;
-    else if (actual > 0) warnings.push('"' + (c.name || 'Component ' + (i + 1)) + '" has production but no quota — attainment treated as 0%.');
-
-    step('Attainment',
-         money0(actual) + ' ÷ ' + money0(proratedQuota),
-         attainment, pct(attainment));
-
-    const p = c.payout || { mode: 'marginal', tiers: [] };
-    const tiers = (p.tiers || []).slice().sort((a, b) => num(a.from) - num(b.from));
-    const threshold = num(p.thresholdPct);
-
-    let payoutPct = 0;
-    let curveNote = '';
-    let hitThreshold = true;
-
-    if (threshold > 0 && attainment < threshold) {
-      hitThreshold = false;
-      curveNote = 'below ' + pct(threshold, 0) + ' threshold';
-      step('Threshold check',
-           pct(attainment) + ' < ' + pct(threshold, 0) + ' minimum',
-           0, 'No payout');
-    } else {
-      if (threshold > 0) {
-        step('Threshold check',
-             pct(attainment) + ' ≥ ' + pct(threshold, 0) + ' minimum',
-             1, 'Met');
-      }
-
-      if (p.mode === 'cliff') {
-        const t = findTier(tiers, attainment);
-        const m = t ? num(t.rate) : 0;
-        payoutPct = attainment * m;
-        curveNote = tierLabel(t) + ' @ ' + mult(m);
-        step('Tier multiplier',
-             'attainment lands in ' + tierLabel(t),
-             m, mult(m));
-        step('Payout before cap',
-             pct(attainment) + ' × ' + mult(m),
-             payoutPct, pct(payoutPct));
-
-      } else if (p.mode === 'flat') {
-        const t = findTier(tiers, attainment);
-        const r = t ? num(t.rate) : 0;
-        payoutPct = r * 100;
-        curveNote = tierLabel(t) + ' pays ' + pct(payoutPct, 0);
-        step('Flat tier payout',
-             'attainment lands in ' + tierLabel(t) + ' → ' + mult(r) + ' of target',
-             payoutPct, pct(payoutPct));
-
-      } else { /* marginal */
-        const parts = [];
-        tiers.forEach(t => {
-          const from = num(t.from);
-          const to = (t.to == null || t.to === '') ? Infinity : num(t.to);
-          const span = Math.max(0, Math.min(attainment, to) - from);
-          if (span > 0) {
-            const earned = span * num(t.rate);
-            payoutPct += earned;
-            parts.push(span.toFixed(1) + 'pts × ' + num(t.rate));
-          }
-        });
-        curveNote = parts.length ? parts.length + ' tier' + (parts.length > 1 ? 's' : '') + ' engaged' : 'no tier engaged';
-        step('Marginal tier build-up',
-             parts.length ? parts.join('  +  ') : 'attainment below first tier',
-             payoutPct, pct(payoutPct));
-      }
-    }
-
-    const capPct = (p.capPct == null || p.capPct === '') ? null : num(p.capPct);
-    let capped = false;
-    if (capPct != null && payoutPct > capPct) {
-      step('Payout cap applied',
-           pct(payoutPct) + ' capped at ' + pct(capPct, 0),
-           capPct, pct(capPct));
-      payoutPct = capPct;
-      capped = true;
-    }
-
-    const payout = compTarget * payoutPct / 100;
-    step('Component payout',
-         money(compTarget) + ' × ' + pct(payoutPct),
-         payout, money(payout));
-
-    comps.push({
-      id: c.id, name: c.name || 'Component ' + (i + 1),
-      weight, compTarget, quota: num(c.quota), proratedQuota, actual,
-      attainment, payoutPct, payout, capped, hitThreshold, curveNote,
-      mode: p.mode || 'marginal'
+  /* Referenced columns must actually exist in the uploaded data, or a rule
+     quietly measures zero. Flag it rather than paying $0 without comment. */
+  if (data.columns && data.columns.length) {
+    const missing = new Set();
+    rules.forEach(r => {
+      if (r.enabled === false) return;
+      (r.conditions || []).forEach(c => { if (c.field && !data.columns.includes(c.field)) missing.add(c.field); });
+      const a = r.action || {};
+      if (a.type !== 'exclude' && a.measureField && !data.columns.includes(a.measureField)) missing.add(a.measureField);
+      if (a.creditPctField && !data.columns.includes(a.creditPctField)) missing.add(a.creditPctField);
     });
+    (plan.components || []).forEach(c => {
+      if (c.actualSource === 'sum' && c.actualField && !data.columns.includes(c.actualField)) missing.add(c.actualField);
+    });
+    if (missing.size) warnings.push('Referenced column(s) not found in the loaded data: ' +
+      Array.from(missing).map(x => '"' + x + '"').join(', ') + '. Those values read as 0.');
+  }
+  const detail = [];
+  const byRule = rules.map(r => ({ id: r.id, name: r.name, count: 0, measure: 0, commission: 0, excluded: 0 }));
+  const byRuleIdx = {}; rules.forEach((r, i) => { byRuleIdx[r.id] = i; });
+  let unmatched = 0, unmatchedMeasure = 0;
+
+  rows.forEach((row, i) => {
+    const rule = rules.find(r => ruleMatches(row, r));
+    if (!rule) {
+      unmatched++;
+      detail.push({ i, row, ruleName: '— no rule matched —', measure: 0, note: 'unmatched', credit: 100, commission: 0, unmatched: true });
+      return;
+    }
+    const a = rule.action || {};
+    const measure = a.measureField ? num(row[a.measureField]) : 0;
+    const creditRaw = a.creditPctField ? row[a.creditPctField] : '';
+    const credit = (creditRaw == null || String(creditRaw).trim() === '') ? 100 : num(creditRaw);
+    const slot = byRule[byRuleIdx[rule.id]];
+
+    if (a.type === 'exclude') {
+      slot.count++; slot.excluded++;
+      detail.push({ i, row, ruleName: rule.name, measure, note: 'excluded by rule', credit, commission: 0 });
+      return;
+    }
+
+    let raw = 0, note = '';
+    if (a.type === 'percent')      { raw = measure * num(a.percent) / 100; note = num(a.percent) + '% of ' + money0(measure); }
+    else if (a.type === 'fixed')   { raw = num(a.amount);                  note = money0(num(a.amount)) + ' fixed'; }
+    else {
+      const rt = rtById[a.rateTableId];
+      if (!rt) warnings.push('Rule "' + rule.name + '" points at a rate table that no longer exists.');
+      const out = applyValueTable(rt, measure);
+      raw = out.amount; note = out.note;
+    }
+    const commission = raw * credit / 100;
+    slot.count++; slot.measure += measure; slot.commission += commission;
+    detail.push({ i, row, ruleName: rule.name, measure, note, credit, commission });
   });
 
-  /* --- modifiers ------------------------------------------------------ */
+  if (rows.length) {
+    group('Deal-based commission');
+    byRule.forEach((s, i) => {
+      if (!s.count) return;
+      const r = rules[i];
+      const cond = (r.conditions || []).length
+        ? (r.conditions || []).map(describeCondition).join(r.match === 'any' ? '  OR  ' : '  AND  ')
+        : 'catch-all (no conditions)';
+      step(s.name + ' — ' + s.count + ' deal' + (s.count === 1 ? '' : 's'),
+           cond + '  ·  ' + money0(s.measure) + ' measured',
+           s.commission, money(s.commission));
+    });
+    if (unmatched) {
+      step('Unmatched deals', unmatched + ' row' + (unmatched === 1 ? '' : 's') + ' matched no rule', 0, '$0.00');
+      warnings.push(unmatched + ' deal row' + (unmatched === 1 ? '' : 's') + ' matched no rule and paid nothing. Add a catch-all rule at the bottom.');
+    }
+  }
+
+  let dealTotal = byRule.reduce((s, r) => s + r.commission, 0);
+  if (rows.length) step('Deal commission subtotal', byRule.filter(r => r.count).map(r => money(r.commission)).join(' + ') || 'none', dealTotal, money(dealTotal));
+
+  /* --- quota-based commission ---------------------------------------- */
+  const comps = [];
+  const components = plan.components || [];
+  const targetIncentive = num(plan.payee.targetIncentive);
+  const proratedTarget = targetIncentive * proration;
+
+  if (components.length) {
+    group('Quota-based commission');
+    step('Variable at target', proration === 1 ? 'entered directly' : money(targetIncentive) + ' × ' + pct(proration * 100, 2),
+         proratedTarget, money(proratedTarget));
+
+    const totalWeight = components.reduce((s, c) => s + num(c.weight), 0);
+    if (Math.abs(totalWeight - 100) > 0.01) warnings.push('Component weights total ' + pct(totalWeight, 2) + ', not 100%.');
+
+    components.forEach((c, i) => {
+      const weight = num(c.weight);
+      const compTarget = proratedTarget * weight / 100;
+      const quotaProration = c.prorateQuota === false ? 1 : proration;
+      const proratedQuota = num(c.quota) * quotaProration;
+
+      let actual = num(c.actual), actualNote = 'entered manually';
+      if (c.actualSource === 'sum' && c.actualField) {
+        actual = rows.reduce((s, r) => s + num(r[c.actualField]), 0);
+        actualNote = 'sum of "' + c.actualField + '" across ' + rows.length + ' deal' + (rows.length === 1 ? '' : 's');
+      }
+
+      let attainment = 0;
+      if (proratedQuota > 0) attainment = actual / proratedQuota * 100;
+      else if (actual > 0) warnings.push('"' + (c.name || 'Component ' + (i + 1)) + '" has production but no quota — attainment treated as 0%.');
+
+      const p = c.payout || {};
+      const rt = rtById[p.rateTableId];
+      if (!rt) warnings.push('Component "' + (c.name || i + 1) + '" has no attainment rate table selected.');
+      const threshold = num(p.thresholdPct);
+
+      let payoutPct = 0, note = '', hitThreshold = true;
+      if (threshold > 0 && attainment < threshold) { hitThreshold = false; note = 'below ' + pct(threshold, 0) + ' threshold'; }
+      else { const out = applyAttainmentTable(rt, attainment); payoutPct = out.payoutPct; note = out.note; }
+
+      const capPct = (p.capPct == null || p.capPct === '') ? null : num(p.capPct);
+      let capped = false;
+      if (capPct != null && payoutPct > capPct) { payoutPct = capPct; capped = true; }
+
+      const payout = compTarget * payoutPct / 100;
+
+      step((c.name || 'Component ' + (i + 1)) + ' — target',
+           money(proratedTarget) + ' × ' + weight + '% weight', compTarget, money(compTarget));
+      step((c.name || 'Component ' + (i + 1)) + ' — attainment',
+           money0(actual) + ' ÷ ' + money0(proratedQuota) + '  (' + actualNote + ')', attainment, pct(attainment));
+      step((c.name || 'Component ' + (i + 1)) + ' — payout rate',
+           hitThreshold ? note + (capped ? '  → capped at ' + pct(capPct, 0) : '') : note, payoutPct, pct(payoutPct));
+      step((c.name || 'Component ' + (i + 1)) + ' — payout',
+           money(compTarget) + ' × ' + pct(payoutPct), payout, money(payout));
+
+      comps.push({ id: c.id, name: c.name || 'Component ' + (i + 1), weight, compTarget,
+                   quota: num(c.quota), proratedQuota, actual, actualNote, attainment,
+                   payoutPct, payout, capped, hitThreshold, note });
+    });
+  }
+
+  let quotaTotal = comps.reduce((s, c) => s + c.payout, 0);
+  if (components.length) step('Quota commission subtotal', comps.map(c => money(c.payout)).join(' + ') || 'none', quotaTotal, money(quotaTotal));
+
+  /* --- modifiers & total ---------------------------------------------- */
   group('Modifiers & total');
+  const dealGross = dealTotal, quotaGross = quotaTotal;   // before modifiers
+  const subtotal = dealTotal + quotaTotal;
+  step('Subtotal before modifiers', money(dealTotal) + ' deal + ' + money(quotaTotal) + ' quota', subtotal, money(subtotal));
 
-  const subtotal = comps.reduce((s, c) => s + c.payout, 0);
-  step('Subtotal before modifiers',
-       comps.length ? comps.map(c => money(c.payout)).join(' + ') : 'no components',
-       subtotal, money(subtotal));
-
-  let variable = subtotal;
   const modsApplied = [];
   (plan.modifiers || []).forEach(m => {
     const opt = (m.options || [])[m.selected] || { label: '—', factor: 1 };
     const f = num(opt.factor);
-    const before = variable;
-    variable = variable * f;
-    modsApplied.push({ name: m.name, label: opt.label, factor: f, before, after: variable });
+    const scope = m.appliesTo || 'all';
+    const before = dealTotal + quotaTotal;
+    if (scope === 'all' || scope === 'deals') dealTotal *= f;
+    if (scope === 'all' || scope === 'quota') quotaTotal *= f;
+    const after = dealTotal + quotaTotal;
+    modsApplied.push({ name: m.name, label: opt.label, factor: f, scope, before, after });
     step(m.name || 'Modifier',
-         money(before) + ' × ' + mult(f) + '  (' + opt.label + ')',
-         variable, money(variable));
+         money(before) + ' × ' + mult(f) + '  (' + opt.label + ', applies to ' + scope + ')',
+         after, money(after));
   });
 
-  const total = proratedBase + variable;
+  const variable = dealTotal + quotaTotal;
   step('Total variable earnings', 'after all modifiers', variable, money(variable));
-  step('Estimated total compensation',
-       money(proratedBase) + ' prorated base + ' + money(variable) + ' variable',
-       total, money(total));
 
   return {
     periodDays, daysOnPlan, proration, prorate,
-    targetIncentive, proratedTarget, proratedBase, base,
-    components: comps, subtotal, modsApplied, variable, total,
-    totalWeight, warnings, audit
+    targetIncentive, proratedTarget,
+    dealGross, quotaGross,          // before modifiers
+    dealTotal, quotaTotal,          // after modifiers
+    subtotal, variable,
+    byRule, rules, unmatched, detail, dealCount: rows.length,
+    components: comps, modsApplied, warnings, audit
   };
-}
-
-function findTier(tiers, attainment) {
-  for (const t of tiers) {
-    const from = num(t.from);
-    const to = (t.to == null || t.to === '') ? Infinity : num(t.to);
-    if (attainment >= from && attainment < to) return t;
-  }
-  return tiers.length ? tiers[tiers.length - 1] : null;
-}
-function tierLabel(t) {
-  if (!t) return 'no tier';
-  const to = (t.to == null || t.to === '') ? null : num(t.to);
-  return to == null ? num(t.from) + '%+' : num(t.from) + '–' + to + '%';
 }
 
 /* ------------------------------ 4. RENDER ------------------------------ */
 
+function fieldOptions(selected) {
+  const cols = DATA.columns.slice();
+  if (selected && !cols.includes(selected)) cols.unshift(selected);
+  return '<option value="">— column —</option>' +
+    cols.map(c => `<option value="${esc(c)}"${c === selected ? ' selected' : ''}>${esc(c)}</option>`).join('');
+}
+function rtOptions(selected, basis) {
+  const list = (PLAN.rateTables || []).filter(rt => rt.basis === basis);
+  return '<option value="">— rate table —</option>' +
+    list.map(rt => `<option value="${esc(rt.id)}"${rt.id === selected ? ' selected' : ''}>${esc(rt.name)}</option>`).join('');
+}
+
 function renderSetup() {
   $$('[data-path]').forEach(el => {
-    if (el.closest('#comp-list') || el.closest('#mod-list')) return;
+    if (el.closest('#rt-list') || el.closest('#rule-list') || el.closest('#comp-list') || el.closest('#mod-list')) return;
     const v = getPath(PLAN, el.dataset.path);
     el.value = v == null ? '' : String(v);
   });
-  const mode = PLAN.payee.targetIncentive.mode;
-  $$('#seg-ti button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === mode)));
-  $('#lbl-ti').textContent = mode === 'percent' ? 'Variable percentage' : 'Target incentive amount';
-  $('#pre-ti').textContent = mode === 'percent' ? '%' : '$';
+}
+
+function renderData() {
+  const has = DATA.rows.length > 0;
+  $('#drop').classList.toggle('hidden', has);
+  $('#data-loaded').classList.toggle('hidden', !has);
+  $('#sec-detail').classList.toggle('hidden', !has);
+  if (!has) return;
+
+  $('#data-name').textContent = DATA.name || 'deal data';
+  $('#data-meta').textContent = DATA.rows.length + ' rows · ' + DATA.columns.length + ' columns';
+  $('#data-cols').innerHTML = DATA.columns.map(c => `<span class="chip b">${esc(c)}</span>`).join('');
+
+  const show = DATA.rows.slice(0, 8);
+  $('#data-preview').innerHTML =
+    '<thead><tr>' + DATA.columns.map(c => `<th>${esc(c)}</th>`).join('') + '</tr></thead>' +
+    '<tbody>' + show.map(r => '<tr>' + DATA.columns.map(c => `<td>${esc(r[c])}</td>`).join('') + '</tr>').join('') +
+    (DATA.rows.length > show.length
+      ? `<tr><td colspan="${DATA.columns.length}" style="color:var(--muted)">+ ${DATA.rows.length - show.length} more rows</td></tr>` : '') +
+    '</tbody>';
+}
+
+function renderRateTables() {
+  $('#rt-list').innerHTML = (PLAN.rateTables || []).map((rt, i) => {
+    const b = 'rateTables.' + i;
+    const h = tierHeaders(rt);
+    const unit = rt.basis === 'value' ? '$' : '%';
+    return `
+    <div class="blk">
+      <div class="blk-top">
+        <span class="tag${rt.basis === 'attainment' ? ' grey' : ''}">${rt.basis === 'value' ? 'Deal value' : 'Attainment'}</span>
+        <input class="name" type="text" data-path="${b}.name" value="${esc(rt.name)}" aria-label="Rate table name">
+        <select class="bare" style="max-width:250px;flex:0 1 250px" data-path="${b}.mode" data-rerender="rt">
+          ${Object.keys(MODE_LABELS[rt.basis]).map(k =>
+            `<option value="${k}"${rt.mode === k ? ' selected' : ''}>${esc(MODE_LABELS[rt.basis][k])}</option>`).join('')}
+        </select>
+        <button class="iconbtn" data-action="del-rt" data-i="${i}" title="Remove rate table">&times;</button>
+      </div>
+      <p class="sec-note" style="margin:-6px 0 12px;font-size:12.5px">${esc(MODE_BLURB[rt.basis + '.' + rt.mode] || '')}</p>
+      <div class="tbl-scroll">
+        <table class="mini">
+          <thead><tr><th class="n">${esc(h.from)}</th><th class="n">${esc(h.to)}</th><th class="n">${esc(h.rate)}</th><th class="x"></th></tr></thead>
+          <tbody>
+            ${(rt.tiers || []).map((t, ti) => `
+              <tr>
+                <td class="n"><input type="number" step="any" data-path="${b}.tiers.${ti}.from" data-type="number" value="${t.from}" aria-label="From"></td>
+                <td class="n"><input type="number" step="any" data-path="${b}.tiers.${ti}.to" data-type="numOrNull" value="${t.to == null ? '' : t.to}" placeholder="∞" aria-label="To"></td>
+                <td class="n"><input type="number" step="any" data-path="${b}.tiers.${ti}.rate" data-type="number" value="${t.rate}" aria-label="Rate"></td>
+                <td class="x"><button class="iconbtn" data-action="del-tier" data-i="${i}" data-t="${ti}" title="Remove band">&times;</button></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <button class="btn sm" style="margin-top:10px" data-action="add-tier" data-i="${i}">+ Add band</button>
+      <span style="color:var(--muted);font-size:12px;margin-left:10px;font-family:var(--mono)">leave the last “to” blank for ∞ · units in ${unit}</span>
+    </div>`;
+  }).join('') || '<p class="empty">No rate tables yet.</p>';
+}
+
+function renderRules() {
+  $('#rule-list').innerHTML = (PLAN.rules || []).map((r, i) => {
+    const b = 'rules.' + i;
+    const a = r.action || {};
+    return `
+    <div class="blk">
+      <div class="blk-top">
+        <span class="tag">${String(i + 1).padStart(2, '0')}</span>
+        <input class="name" type="text" data-path="${b}.name" value="${esc(r.name)}" aria-label="Rule name">
+        <select class="bare" style="max-width:130px;flex:0 1 130px" data-path="${b}.enabled" data-type="bool">
+          <option value="true"${r.enabled !== false ? ' selected' : ''}>Enabled</option>
+          <option value="false"${r.enabled === false ? ' selected' : ''}>Disabled</option>
+        </select>
+        <button class="iconbtn mv" data-action="up-rule" data-i="${i}" title="Move up" ${i === 0 ? 'disabled' : ''}>&uarr;</button>
+        <button class="iconbtn mv" data-action="down-rule" data-i="${i}" title="Move down" ${i === PLAN.rules.length - 1 ? 'disabled' : ''}>&darr;</button>
+        <button class="iconbtn" data-action="del-rule" data-i="${i}" title="Remove rule">&times;</button>
+      </div>
+
+      <div class="inner">
+        <div class="ttl">
+          <span>When</span>
+          <select class="bare" style="max-width:150px" data-path="${b}.match">
+            <option value="all"${r.match !== 'any' ? ' selected' : ''}>all conditions</option>
+            <option value="any"${r.match === 'any' ? ' selected' : ''}>any condition</option>
+          </select>
+          <span>match</span>
+        </div>
+        ${(r.conditions || []).length ? `
+        <div class="tbl-scroll">
+          <table class="mini">
+            <thead><tr><th>Column</th><th>Test</th><th>Value</th><th class="x"></th></tr></thead>
+            <tbody>
+              ${(r.conditions || []).map((c, ci) => `
+                <tr>
+                  <td><select data-path="${b}.conditions.${ci}.field">${fieldOptions(c.field)}</select></td>
+                  <td><select data-path="${b}.conditions.${ci}.op" data-rerender="rules">
+                    ${Object.keys(OPS).map(k => `<option value="${k}"${c.op === k ? ' selected' : ''}>${esc(OPS[k].label)}</option>`).join('')}
+                  </select></td>
+                  <td><input type="text" style="text-align:left" data-path="${b}.conditions.${ci}.value" value="${esc(c.value)}"
+                       ${OPS[c.op] && !OPS[c.op].needsValue ? 'disabled placeholder="—"' : ''} aria-label="Value"></td>
+                  <td class="x"><button class="iconbtn" data-action="del-cond" data-i="${i}" data-t="${ci}" title="Remove condition">&times;</button></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : '<p class="empty" style="padding:4px 0 10px">No conditions — this rule matches every deal (catch-all).</p>'}
+        <button class="btn sm" style="margin-top:8px" data-action="add-cond" data-i="${i}">+ Add condition</button>
+      </div>
+
+      <div class="inner">
+        <div class="ttl">Then</div>
+        <div class="fields">
+          <div class="f">
+            <label>Action</label>
+            <select class="bare" data-path="${b}.action.type" data-rerender="rules">
+              ${Object.keys(ACTIONS).map(k => `<option value="${k}"${a.type === k ? ' selected' : ''}>${esc(ACTIONS[k])}</option>`).join('')}
+            </select>
+          </div>
+          ${a.type === 'exclude' ? '' : `
+          <div class="f">
+            <label>Measure column</label>
+            <select class="bare" data-path="${b}.action.measureField">${fieldOptions(a.measureField)}</select>
+          </div>`}
+          ${a.type === 'rateTable' ? `
+          <div class="f">
+            <label>Rate table</label>
+            <select class="bare" data-path="${b}.action.rateTableId">${rtOptions(a.rateTableId, 'value')}</select>
+          </div>` : ''}
+          ${a.type === 'percent' ? `
+          <div class="f">
+            <label>Rate</label>
+            <div class="ipt"><span class="pre">%</span><input type="number" step="any" data-path="${b}.action.percent" data-type="number" value="${a.percent || 0}"></div>
+          </div>` : ''}
+          ${a.type === 'fixed' ? `
+          <div class="f">
+            <label>Amount per deal</label>
+            <div class="ipt"><span class="pre">$</span><input type="number" step="any" data-path="${b}.action.amount" data-type="number" value="${a.amount || 0}"></div>
+          </div>` : ''}
+          ${a.type === 'exclude' ? '' : `
+          <div class="f">
+            <label>Credit % column <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+            <select class="bare" data-path="${b}.action.creditPctField">${fieldOptions(a.creditPctField)}</select>
+            <p class="hint">Splits: 100 = full credit. Blank cells count as 100.</p>
+          </div>`}
+        </div>
+      </div>
+    </div>`;
+  }).join('') || '<p class="empty">No rules yet.</p>';
 }
 
 function renderComponents() {
-  const host = $('#comp-list');
-  host.innerHTML = (PLAN.components || []).map((c, i) => {
+  $('#comp-list').innerHTML = (PLAN.components || []).map((c, i) => {
+    const b = 'components.' + i;
     const p = c.payout || {};
-    const modeInfo = PAYOUT_MODES[p.mode] || PAYOUT_MODES.marginal;
-    const base = 'components.' + i;
     return `
-    <div class="comp">
-      <div class="comp-top">
-        <span class="tag">${String(i + 1).padStart(2, '0')}</span>
-        <input class="name" type="text" data-path="${base}.name" data-type="string" value="${esc(c.name)}" aria-label="Component name">
+    <div class="blk">
+      <div class="blk-top">
+        <span class="tag grey">${String(i + 1).padStart(2, '0')}</span>
+        <input class="name" type="text" data-path="${b}.name" value="${esc(c.name)}" aria-label="Component name">
         <button class="iconbtn" data-action="del-comp" data-i="${i}" title="Remove component">&times;</button>
       </div>
-
       <div class="fields">
         <div class="f">
-          <label>Weight of target incentive</label>
-          <div class="ipt"><span class="pre">%</span><input type="number" min="0" step="1" data-path="${base}.weight" data-type="number" value="${c.weight}"></div>
+          <label>Weight of variable</label>
+          <div class="ipt"><span class="pre">%</span><input type="number" step="any" data-path="${b}.weight" data-type="number" value="${c.weight}"></div>
         </div>
         <div class="f">
-          <label>Annual quota</label>
-          <div class="ipt"><span class="pre">$</span><input type="number" min="0" step="1000" data-path="${base}.quota" data-type="number" value="${c.quota}"></div>
+          <label>Quota</label>
+          <div class="ipt"><span class="pre">$</span><input type="number" step="any" data-path="${b}.quota" data-type="number" value="${c.quota}"></div>
         </div>
+        <div class="f">
+          <label>Production source</label>
+          <select class="bare" data-path="${b}.actualSource" data-rerender="comps">
+            <option value="manual"${c.actualSource !== 'sum' ? ' selected' : ''}>Enter manually</option>
+            <option value="sum"${c.actualSource === 'sum' ? ' selected' : ''}>Sum a deal-data column</option>
+          </select>
+        </div>
+        ${c.actualSource === 'sum' ? `
+        <div class="f">
+          <label>Column to sum</label>
+          <select class="bare" data-path="${b}.actualField">${fieldOptions(c.actualField)}</select>
+        </div>` : `
         <div class="f">
           <label>Actual production</label>
-          <div class="ipt"><span class="pre">$</span><input type="number" min="0" step="1000" data-path="${base}.actual" data-type="number" value="${c.actual}"></div>
-        </div>
+          <div class="ipt"><span class="pre">$</span><input type="number" step="any" data-path="${b}.actual" data-type="number" value="${c.actual}"></div>
+        </div>`}
         <div class="f">
           <label>Prorate this quota</label>
-          <select class="bare" data-path="${base}.prorateQuota" data-type="bool">
+          <select class="bare" data-path="${b}.prorateQuota" data-type="bool">
             <option value="true"${c.prorateQuota !== false ? ' selected' : ''}>Yes</option>
             <option value="false"${c.prorateQuota === false ? ' selected' : ''}>No</option>
           </select>
         </div>
       </div>
-
-      <div class="comp-pay">
-        <div class="ttl">
-          <span>Payout curve</span>
-          <select class="bare" style="max-width:320px" data-path="${base}.payout.mode" data-type="string" data-rerender="components">
-            ${Object.keys(PAYOUT_MODES).map(k =>
-              `<option value="${k}"${p.mode === k ? ' selected' : ''}>${esc(PAYOUT_MODES[k].label)}</option>`).join('')}
-          </select>
-        </div>
-        <p class="hint" style="margin:-4px 0 14px;color:var(--muted);font-family:var(--sans);font-size:12.5px">${esc(modeInfo.blurb)}</p>
-
-        <div class="tbl-scroll">
-          <table class="tier-tbl">
-            <thead><tr>
-              <th class="n">From %</th><th class="n">To %</th><th class="n">${esc(modeInfo.rateHeader)}</th><th class="x"></th>
-            </tr></thead>
-            <tbody>
-              ${(p.tiers || []).map((t, ti) => `
-                <tr>
-                  <td class="n"><input type="number" step="1" data-path="${base}.payout.tiers.${ti}.from" data-type="number" value="${t.from}" aria-label="Tier from"></td>
-                  <td class="n"><input type="number" step="1" data-path="${base}.payout.tiers.${ti}.to" data-type="numOrNull" value="${t.to == null ? '' : t.to}" placeholder="∞" aria-label="Tier to"></td>
-                  <td class="n"><input type="number" step="0.05" data-path="${base}.payout.tiers.${ti}.rate" data-type="number" value="${t.rate}" aria-label="Tier rate"></td>
-                  <td class="x"><button class="iconbtn" data-action="del-tier" data-i="${i}" data-t="${ti}" title="Remove tier">&times;</button></td>
-                </tr>`).join('')}
-            </tbody>
-          </table>
-        </div>
-        <button class="btn sm" style="margin-top:10px" data-action="add-tier" data-i="${i}">+ Add tier</button>
-
-        <div class="fields" style="margin-top:18px">
+      <div class="inner">
+        <div class="ttl">Payout curve</div>
+        <div class="fields">
           <div class="f">
-            <label>Minimum attainment threshold</label>
-            <div class="ipt"><span class="pre">%</span><input type="number" min="0" step="1" data-path="${base}.payout.thresholdPct" data-type="number" value="${p.thresholdPct == null ? 0 : p.thresholdPct}"></div>
-            <p class="hint">Below this, the component pays nothing.</p>
+            <label>Attainment rate table</label>
+            <select class="bare" data-path="${b}.payout.rateTableId">${rtOptions(p.rateTableId, 'attainment')}</select>
+          </div>
+          <div class="f">
+            <label>Minimum threshold</label>
+            <div class="ipt"><span class="pre">%</span><input type="number" step="any" data-path="${b}.payout.thresholdPct" data-type="number" value="${p.thresholdPct == null ? 0 : p.thresholdPct}"></div>
           </div>
           <div class="f">
             <label>Payout cap</label>
-            <div class="ipt"><span class="pre">%</span><input type="number" min="0" step="10" data-path="${base}.payout.capPct" data-type="numOrNull" value="${p.capPct == null ? '' : p.capPct}" placeholder="none"></div>
-            <p class="hint">Max payout as % of component target.</p>
+            <div class="ipt"><span class="pre">%</span><input type="number" step="any" data-path="${b}.payout.capPct" data-type="numOrNull" value="${p.capPct == null ? '' : p.capPct}" placeholder="none"></div>
           </div>
         </div>
       </div>
     </div>`;
-  }).join('') || '<p style="color:var(--muted)">No components yet — add one to start.</p>';
+  }).join('') || '<p class="empty">No quota components — all commission comes from the deal rules.</p>';
 }
 
 function renderModifiers() {
-  const host = $('#mod-list');
-  host.innerHTML = (PLAN.modifiers || []).map((m, i) => {
-    const base = 'modifiers.' + i;
+  $('#mod-list').innerHTML = (PLAN.modifiers || []).map((m, i) => {
+    const b = 'modifiers.' + i;
     return `
-    <div class="comp">
-      <div class="comp-top">
-        <span class="tag">MOD</span>
-        <input class="name" type="text" data-path="${base}.name" data-type="string" value="${esc(m.name)}" aria-label="Modifier name">
+    <div class="blk">
+      <div class="blk-top">
+        <span class="tag grey">MOD</span>
+        <input class="name" type="text" data-path="${b}.name" value="${esc(m.name)}" aria-label="Modifier name">
         <button class="iconbtn" data-action="del-mod" data-i="${i}" title="Remove modifier">&times;</button>
       </div>
       <div class="fields">
         <div class="f">
           <label>Selected value</label>
-          <select class="bare" data-path="${base}.selected" data-type="number">
-            ${(m.options || []).map((o, oi) =>
-              `<option value="${oi}"${m.selected === oi ? ' selected' : ''}>${esc(o.label)} — ${mult(num(o.factor))}</option>`).join('')}
+          <select class="bare" data-path="${b}.selected" data-type="number">
+            ${(m.options || []).map((o, oi) => `<option value="${oi}"${m.selected === oi ? ' selected' : ''}>${esc(o.label)} — ${mult(num(o.factor))}</option>`).join('')}
+          </select>
+        </div>
+        <div class="f">
+          <label>Applies to</label>
+          <select class="bare" data-path="${b}.appliesTo">
+            <option value="all"${(m.appliesTo || 'all') === 'all' ? ' selected' : ''}>All commission</option>
+            <option value="deals"${m.appliesTo === 'deals' ? ' selected' : ''}>Deal-based only</option>
+            <option value="quota"${m.appliesTo === 'quota' ? ' selected' : ''}>Quota-based only</option>
           </select>
         </div>
       </div>
-      <div class="comp-pay">
+      <div class="inner">
         <div class="ttl">Options</div>
         <div class="tbl-scroll">
-          <table class="tier-tbl">
+          <table class="mini">
             <thead><tr><th>Label</th><th class="n">Factor</th><th class="x"></th></tr></thead>
             <tbody>
               ${(m.options || []).map((o, oi) => `
                 <tr>
-                  <td><input type="text" style="text-align:left" data-path="${base}.options.${oi}.label" data-type="string" value="${esc(o.label)}" aria-label="Option label"></td>
-                  <td class="n"><input type="number" step="0.05" data-path="${base}.options.${oi}.factor" data-type="number" value="${o.factor}" aria-label="Option factor"></td>
+                  <td><input type="text" style="text-align:left" data-path="${b}.options.${oi}.label" value="${esc(o.label)}" aria-label="Option label"></td>
+                  <td class="n"><input type="number" step="any" data-path="${b}.options.${oi}.factor" data-type="number" value="${o.factor}" aria-label="Factor"></td>
                   <td class="x"><button class="iconbtn" data-action="del-opt" data-i="${i}" data-t="${oi}" title="Remove option">&times;</button></td>
                 </tr>`).join('')}
             </tbody>
@@ -887,86 +1259,105 @@ function renderModifiers() {
         <button class="btn sm" style="margin-top:10px" data-action="add-opt" data-i="${i}">+ Add option</button>
       </div>
     </div>`;
-  }).join('') || '<p style="color:var(--muted)">No modifiers — payout is taken straight from the components.</p>';
+  }).join('') || '<p class="empty">No modifiers — payout is taken straight from the rules and components.</p>';
 }
 
 function renderOutputs() {
-  const r = calculate(PLAN);
+  const r = calculate(PLAN, DATA);
   window.LAST_RESULT = r;
 
-  /* banner */
   $('#out-variable').textContent = money0(r.variable);
-  $('#out-total').textContent = money0(r.total);
-  const summ = [];
-  if (r.components.length) summ.push(r.components.map(c => pct(c.attainment, 1)).join(' / ') + ' attainment');
-  r.modsApplied.forEach(m => summ.push(m.label));
-  if (r.prorate && r.proration < 1) summ.push(pct(r.proration * 100, 1) + ' of period');
-  $('#out-summary').textContent = summ.join(' · ') || ' ';
-  $('#out-total-cap').textContent = money(r.proratedBase) + ' prorated base + variable';
+  $('#out-deals').textContent = money0(r.dealTotal);
+  $('#out-quota').textContent = money0(r.quotaTotal);
+  $('#out-count').textContent = String(r.dealCount);
 
-  /* weight warning */
-  const w = $('#weight-warn');
-  if (PLAN.components.length && Math.abs(r.totalWeight - 100) > 0.01) {
-    w.hidden = false;
-    w.textContent = '⚠ Weights total ' + pct(r.totalWeight, 2) + ' — should be 100%.';
-  } else w.hidden = true;
+  const bits = [];
+  if (r.dealCount) bits.push(r.dealCount + ' deals · ' + r.byRule.filter(x => x.count).length + ' rules engaged');
+  r.components.forEach(c => bits.push(pct(c.attainment, 1) + ' attainment'));
+  r.modsApplied.forEach(m => bits.push(m.label));
+  if (r.prorate && r.proration < 1) bits.push(pct(r.proration * 100, 1) + ' of period');
+  $('#out-summary').textContent = bits.join(' · ') || 'Load deal data or add a quota component to begin';
 
-  /* hints */
-  const ti = PLAN.payee.targetIncentive;
-  $('#hint-ti').textContent = ti.mode === 'percent'
-    ? num(ti.value) + '% of base = ' + money0(r.targetIncentive) + ' at target'
-    : money0(r.targetIncentive) + ' at target';
   $('#hint-prorate').textContent = r.prorate
-    ? r.daysOnPlan + ' of ' + r.periodDays + ' days = ' + pct(r.proration * 100, 1)
-    : 'Full period credited.';
+    ? r.daysOnPlan + ' of ' + r.periodDays + ' days = ' + pct(r.proration * 100, 1) : 'Full period credited.';
   $('#foot-period').textContent = 'Period: ' + fmtDate(PLAN.meta.periodStart) + ' – ' + fmtDate(PLAN.meta.periodEnd);
 
+  /* rule / weight warnings */
+  const rw = $('#rule-warn');
+  const hasCatchAll = (PLAN.rules || []).some(x => x.enabled !== false && !(x.conditions || []).length);
+  if (DATA.rows.length && !hasCatchAll && r.unmatched) {
+    rw.hidden = false; rw.textContent = '⚠ ' + r.unmatched + ' deal(s) matched no rule. Add a rule with no conditions at the bottom to catch them.';
+  } else rw.hidden = true;
+
+  const ww = $('#weight-warn');
+  const tw = (PLAN.components || []).reduce((s, c) => s + num(c.weight), 0);
+  if ((PLAN.components || []).length && Math.abs(tw - 100) > 0.01) {
+    ww.hidden = false; ww.textContent = '⚠ Weights total ' + pct(tw, 2) + ' — should be 100%.';
+  } else ww.hidden = true;
+
   /* statement */
-  const rows = r.components.map(c => `
-    <tr>
-      <td><strong>${esc(c.name)}</strong><div class="sub">${c.weight}% weight · ${esc(c.curveNote)}${c.capped ? ' · capped' : ''}</div></td>
-      <td class="n">${money0(c.proratedQuota)}</td>
-      <td class="n">${money0(c.actual)}</td>
-      <td class="n">${pct(c.attainment)}</td>
-      <td class="n">${pct(c.payoutPct)}</td>
-      <td class="n">${money(c.payout)}</td>
-    </tr>`).join('');
-
-  const modRows = r.modsApplied.map(m => `
-    <tr>
-      <td colspan="4"><strong>${esc(m.name)}</strong><div class="sub">${esc(m.label)}</div></td>
-      <td class="n">${mult(m.factor)}</td>
-      <td class="n">${money(m.after)}</td>
-    </tr>`).join('');
-
-  $('#stmt').innerHTML = `
-    <thead><tr>
-      <th>Component</th><th class="n">Quota</th><th class="n">Actual</th>
-      <th class="n">Attain</th><th class="n">Payout %</th><th class="n">Amount</th>
-    </tr></thead>
-    <tbody>
-      ${rows || '<tr><td colspan="6" style="color:var(--muted)">No components.</td></tr>'}
-      <tr><td colspan="5"><strong>Subtotal</strong></td><td class="n"><strong>${money(r.subtotal)}</strong></td></tr>
-      ${modRows}
-      <tr class="total"><td colspan="5">Total variable earnings</td><td class="n">${money(r.variable)}</td></tr>
-      <tr><td colspan="5">Prorated base salary</td><td class="n">${money(r.proratedBase)}</td></tr>
-      <tr class="total"><td colspan="5">Estimated total compensation</td><td class="n">${money(r.total)}</td></tr>
-    </tbody>`;
+  let html = '<thead><tr><th>Line</th><th class="n">Deals</th><th class="n">Measure</th><th class="n">Rate</th><th class="n">Amount</th></tr></thead><tbody>';
+  if (r.dealCount) {
+    html += '<tr class="sec"><td colspan="5">Deal-based</td></tr>';
+    r.byRule.forEach((s, i) => {
+      if (!s.count) return;
+      const rule = r.rules[i], a = rule.action || {};
+      const rate = a.type === 'percent' ? num(a.percent) + '%'
+                 : a.type === 'fixed' ? money0(num(a.amount))
+                 : a.type === 'exclude' ? '—'
+                 : 'table';
+      html += `<tr><td><strong>${esc(s.name)}</strong><div class="s2">${esc(ACTIONS[a.type] || '')}</div></td>
+               <td class="n">${s.count}</td><td class="n">${money0(s.measure)}</td><td class="n">${rate}</td><td class="n">${money(s.commission)}</td></tr>`;
+    });
+    if (r.unmatched) html += `<tr><td style="color:var(--red)">Unmatched deals</td><td class="n">${r.unmatched}</td><td class="n">—</td><td class="n">—</td><td class="n">$0.00</td></tr>`;
+    html += `<tr><td colspan="4"><strong>Deal subtotal</strong></td><td class="n"><strong>${money(r.byRule.reduce((s2, x) => s2 + x.commission, 0))}</strong></td></tr>`;
+  }
+  if (r.components.length) {
+    html += '<tr class="sec"><td colspan="5">Quota-based</td></tr>';
+    r.components.forEach(c => {
+      html += `<tr><td><strong>${esc(c.name)}</strong><div class="s2">${c.weight}% weight · ${esc(c.note)}${c.capped ? ' · capped' : ''}</div></td>
+               <td class="n">—</td><td class="n">${money0(c.actual)}</td><td class="n">${pct(c.payoutPct)}</td><td class="n">${money(c.payout)}</td></tr>`;
+    });
+    html += `<tr><td colspan="4"><strong>Quota subtotal</strong></td><td class="n"><strong>${money(r.components.reduce((s2, c) => s2 + c.payout, 0))}</strong></td></tr>`;
+  }
+  html += '<tr class="sec"><td colspan="5">Modifiers &amp; total</td></tr>';
+  html += `<tr><td colspan="4">Subtotal before modifiers</td><td class="n">${money(r.subtotal)}</td></tr>`;
+  r.modsApplied.forEach(m => {
+    html += `<tr><td><strong>${esc(m.name)}</strong><div class="s2">${esc(m.label)} · ${esc(m.scope)}</div></td>
+             <td class="n">—</td><td class="n">—</td><td class="n">${mult(m.factor)}</td><td class="n">${money(m.after)}</td></tr>`;
+  });
+  html += `<tr class="total"><td colspan="4">Total variable earnings</td><td class="n">${money(r.variable)}</td></tr></tbody>`;
+  $('#stmt').innerHTML = html;
 
   /* audit */
   $('#audit').innerHTML = r.audit.map(s => s.group
     ? `<div class="step group"><span class="sn"></span><div><p class="sl">${esc(s.label)}</p></div><span></span></div>`
-    : `<div class="step">
-         <span class="sn">${String(s.n).padStart(2, '0')}</span>
+    : `<div class="step"><span class="sn">${String(s.n).padStart(2, '0')}</span>
          <div><p class="sl">${esc(s.label)}</p><p class="sf">${esc(s.formula)}</p></div>
-         <span class="sv">${esc(s.display)}</span>
-       </div>`).join('');
-
-  /* warnings into audit area */
+         <span class="sv">${esc(s.display)}</span></div>`).join('');
+  $('#audit').insertAdjacentHTML('beforeend',
+    '<div class="callout"><span>ⓘ</span><div><b>Every figure is traceable.</b> Each step shows the formula and the values behind it, in the order the engine applied them. Line-level detail is in section 09.</div></div>');
   if (r.warnings.length) {
     $('#audit').insertAdjacentHTML('beforeend',
-      '<div class="callout" style="background:#f6e7e4;color:#6b2f26"><span>⚠</span><div>' +
-      r.warnings.map(esc).join('<br>') + '</div></div>');
+      '<div class="callout err"><span>⚠</span><div>' + r.warnings.map(esc).join('<br>') + '</div></div>');
+  }
+
+  /* deal detail */
+  if (DATA.rows.length) {
+    const cols = DATA.columns;
+    $('#detail-tbl').innerHTML =
+      '<thead><tr><th class="n">#</th>' + cols.map(c => `<th>${esc(c)}</th>`).join('') +
+      '<th>Rule matched</th><th>Calculation</th><th class="n">Credit</th><th class="n">Commission</th></tr></thead><tbody>' +
+      r.detail.map(d => `<tr>
+          <td class="n">${d.i + 1}</td>
+          ${cols.map(c => `<td>${esc(d.row[c])}</td>`).join('')}
+          <td${d.unmatched ? ' style="color:var(--red)"' : ''}>${esc(d.ruleName)}</td>
+          <td style="white-space:normal;min-width:190px">${esc(d.note)}</td>
+          <td class="n">${d.credit}%</td>
+          <td class="n" style="color:var(--blue-3)">${money(d.commission)}</td>
+        </tr>`).join('') +
+      `<tr><td class="n"></td><td colspan="${cols.length + 2}"><strong>Total</strong></td><td class="n"></td>
+        <td class="n"><strong>${money(r.detail.reduce((s, d) => s + d.commission, 0))}</strong></td></tr></tbody>`;
   }
 
   /* json */
@@ -974,7 +1365,67 @@ function renderOutputs() {
   if (document.activeElement !== box) box.value = JSON.stringify(PLAN, null, 2);
 }
 
-function renderAll() { renderSetup(); renderComponents(); renderModifiers(); renderOutputs(); }
+function renderSchemaRef() {
+  $('#schema-ref').innerHTML = `
+  <p class="sec-note">Contract the agent writes against. Deal rows are supplied separately by the user’s CSV; the agent only produces this object.</p>
+  <textarea class="json" spellcheck="false" readonly style="min-height:340px">${esc(
+`rateTable = {
+  id, name,
+  basis: "value" | "attainment",
+  mode:  "marginal" | "cliff" | "flat",
+  tiers: [ { from, to, rate } ]      // to: null = infinity
+}
+  value.marginal  -> commission = SUM( dollars of deal in band x rate% )
+  value.cliff     -> commission = deal value x rate% of the band it lands in
+  value.flat      -> commission = flat dollar amount of the band it lands in
+  attainment.*    -> same three shapes, on percent-of-quota, returning payout %
+
+rule = {
+  id, name, enabled,
+  match: "all" | "any",
+  conditions: [ { field, op, value } ],   // [] = catch-all, matches every deal
+  action: {
+    type: "rateTable" | "percent" | "fixed" | "exclude",
+    measureField,        // deal column holding the dollar amount
+    rateTableId,         // when type = rateTable
+    percent,             // when type = percent
+    amount,              // when type = fixed
+    creditPctField       // optional split column; blank cell = 100
+  }
+}
+  ops: is, isnot, contains, notcontains, oneof,
+       gt, gte, lt, lte, between ("a, b"), blank, notblank
+  Rules are tested top to bottom; FIRST MATCH WINS.
+
+component = {                          // optional quota-based earnings
+  id, name, weight,                    // weight = % share of payee.targetIncentive
+  quota, prorateQuota,
+  actualSource: "manual" | "sum",      // "sum" totals actualField across deal rows
+  actualField, actual,
+  payout: { rateTableId, thresholdPct, capPct }
+}
+
+modifier = {
+  id, name, selected,                  // index into options
+  appliesTo: "all" | "deals" | "quota",
+  options: [ { label, factor } ]
+}
+
+ORDER OF OPERATIONS
+  1. days on plan / days in period -> proration factor
+  2. each deal row -> first matching rule -> action -> x credit%
+  3. deal commission subtotal
+  4. quota components: target x weight, actual / prorated quota -> attainment,
+     threshold, attainment rate table, cap -> dollars
+  5. quota commission subtotal
+  6. modifiers, in array order, against their scope
+  7. total variable earnings`)}</textarea>`;
+}
+
+function renderAll() {
+  renderSetup(); renderData(); renderRateTables(); renderRules();
+  renderComponents(); renderModifiers(); renderSchemaRef(); renderOutputs();
+}
 
 /* ------------------------------ 5. EVENTS ------------------------------ */
 
@@ -987,6 +1438,8 @@ function coerce(el) {
   return v;
 }
 
+const RERENDER = { rt: renderRateTables, rules: renderRules, comps: renderComponents };
+
 document.addEventListener('input', e => {
   const el = e.target.closest('[data-path]');
   if (!el) return;
@@ -998,29 +1451,53 @@ document.addEventListener('change', e => {
   const el = e.target.closest('[data-path]');
   if (!el) return;
   setPath(PLAN, el.dataset.path, coerce(el));
-  if (el.dataset.rerender === 'components') { renderComponents(); }
+  const rr = el.dataset.rerender;
+  if (rr && RERENDER[rr]) RERENDER[rr]();
+  if (el.dataset.path.indexOf('rateTables') === 0 && /\.name$/.test(el.dataset.path)) { renderRules(); renderComponents(); }
   renderOutputs();
 });
 
 document.addEventListener('click', e => {
-  const b = e.target.closest('[data-action]');
+  const b = e.target.closest('[data-action],[data-add-rt]');
   if (!b) return;
-  const i = +b.dataset.i, t = +b.dataset.t;
-  const a = b.dataset.action;
 
-  if (a === 'del-comp') { PLAN.components.splice(i, 1); renderComponents(); }
-  else if (a === 'add-tier') {
-    const tiers = PLAN.components[i].payout.tiers;
-    const last = tiers[tiers.length - 1];
-    const from = last ? (last.to == null ? num(last.from) + 50 : num(last.to)) : 0;
-    if (last && last.to == null) last.to = from;
-    tiers.push({ from, to: null, rate: 1 });
-    renderComponents();
+  if (b.dataset.addRt) {
+    const basis = b.dataset.addRt;
+    PLAN.rateTables.push({
+      id: uid('rt'), name: basis === 'value' ? 'New deal-value table' : 'New attainment table',
+      basis, mode: 'marginal',
+      tiers: basis === 'value' ? [{ from: 0, to: null, rate: 3 }] : [{ from: 0, to: null, rate: 1 }]
+    });
+    renderRateTables(); renderRules(); renderComponents(); renderOutputs();
+    return;
   }
-  else if (a === 'del-tier') { PLAN.components[i].payout.tiers.splice(t, 1); renderComponents(); }
-  else if (a === 'del-mod') { PLAN.modifiers.splice(i, 1); renderModifiers(); }
-  else if (a === 'add-opt') { PLAN.modifiers[i].options.push({ label: 'New option', factor: 1 }); renderModifiers(); }
-  else if (a === 'del-opt') {
+
+  const i = +b.dataset.i, t = +b.dataset.t, a = b.dataset.action;
+
+  if (a === 'del-rt')      { PLAN.rateTables.splice(i, 1); renderRateTables(); renderRules(); renderComponents(); }
+  else if (a === 'add-tier') {
+    const tiers = PLAN.rateTables[i].tiers;
+    const last = tiers[tiers.length - 1];
+    const isVal = PLAN.rateTables[i].basis === 'value';
+    const from = last ? (last.to == null ? num(last.from) + (isVal ? 100000 : 50) : num(last.to)) : 0;
+    if (last && last.to == null) last.to = from;
+    tiers.push({ from, to: null, rate: last ? num(last.rate) : 1 });
+    renderRateTables();
+  }
+  else if (a === 'del-tier') { PLAN.rateTables[i].tiers.splice(t, 1); renderRateTables(); }
+  else if (a === 'del-rule') { PLAN.rules.splice(i, 1); renderRules(); }
+  else if (a === 'up-rule' && i > 0)   { const x = PLAN.rules.splice(i, 1)[0]; PLAN.rules.splice(i - 1, 0, x); renderRules(); }
+  else if (a === 'down-rule' && i < PLAN.rules.length - 1) { const x = PLAN.rules.splice(i, 1)[0]; PLAN.rules.splice(i + 1, 0, x); renderRules(); }
+  else if (a === 'add-cond') {
+    PLAN.rules[i].conditions = PLAN.rules[i].conditions || [];
+    PLAN.rules[i].conditions.push({ field: DATA.columns[0] || '', op: 'is', value: '' });
+    renderRules();
+  }
+  else if (a === 'del-cond') { PLAN.rules[i].conditions.splice(t, 1); renderRules(); }
+  else if (a === 'del-comp') { PLAN.components.splice(i, 1); renderComponents(); }
+  else if (a === 'del-mod')  { PLAN.modifiers.splice(i, 1); renderModifiers(); }
+  else if (a === 'add-opt')  { PLAN.modifiers[i].options.push({ label: 'New option', factor: 1 }); renderModifiers(); }
+  else if (a === 'del-opt')  {
     PLAN.modifiers[i].options.splice(t, 1);
     if (PLAN.modifiers[i].selected >= PLAN.modifiers[i].options.length) PLAN.modifiers[i].selected = 0;
     renderModifiers();
@@ -1029,112 +1506,146 @@ document.addEventListener('click', e => {
   renderOutputs();
 });
 
-$('#seg-ti').addEventListener('click', e => {
-  const b = e.target.closest('button[data-val]');
-  if (!b) return;
-  PLAN.payee.targetIncentive.mode = b.dataset.val;
-  renderSetup(); renderOutputs();
+/* --- data loading ---------------------------------------------------- */
+function loadCSVText(text, name) {
+  const d = csvToData(text, name);
+  if (!d.columns.length) { toast('Could not read any columns'); return; }
+  DATA = d;
+  renderData(); renderRules(); renderComponents(); renderOutputs();
+  toast(d.rows.length + ' rows loaded');
+}
+
+$('#btn-pick').addEventListener('click', () => $('#file-input').click());
+$('#file-input').addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  const fr = new FileReader();
+  fr.onload = () => loadCSVText(fr.result, f.name);
+  fr.onerror = () => toast('Could not read that file');
+  fr.readAsText(f);
+  e.target.value = '';
 });
 
-$('#btn-add-comp').addEventListener('click', () => {
-  PLAN.components.push({
-    id: 'c' + Date.now(), name: 'New component', weight: 0,
-    quota: 0, actual: 0, prorateQuota: true,
-    payout: { mode: 'marginal', thresholdPct: 0, capPct: null, tiers: [{ from: 0, to: null, rate: 1 }] }
-  });
-  renderComponents(); renderOutputs();
+const drop = $('#drop');
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => {
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (!f) return;
+  const fr = new FileReader();
+  fr.onload = () => loadCSVText(fr.result, f.name);
+  fr.readAsText(f);
 });
 
-$('#btn-add-mod').addEventListener('click', () => {
-  PLAN.modifiers.push({
-    id: 'm' + Date.now(), name: 'New modifier', selected: 0,
-    options: [{ label: 'Full', factor: 1 }, { label: 'Half', factor: 0.5 }]
-  });
-  renderModifiers(); renderOutputs();
+$('#btn-paste').addEventListener('click', () => {
+  const box = $('#paste-box');
+  box.hidden = false; box.open = true;
+  $('#paste-area').focus();
 });
-
+$('#btn-paste-load').addEventListener('click', () => {
+  const t = $('#paste-area').value.trim();
+  if (!t) { toast('Nothing to load'); return; }
+  loadCSVText(t, 'pasted.csv');
+  $('#paste-box').open = false;
+});
+$('#btn-clear-data').addEventListener('click', () => {
+  DATA = { name: '', columns: [], rows: [] };
+  renderData(); renderRules(); renderComponents(); renderOutputs();
+  toast('Deal data cleared');
+});
+$('#btn-sample').addEventListener('click', () => {
+  PLAN = defaultPlan();
+  loadCSVText(SAMPLE_CSV, 'sample-deals.csv');
+  renderAll();
+  toast('Sample plan and deals loaded');
+});
 $('#btn-reset').addEventListener('click', () => {
-  PLAN = defaultPlan(); renderAll(); toast('Reset to the sample plan');
+  PLAN = defaultPlan(); DATA = { name: '', columns: [], rows: [] };
+  renderAll(); toast('Reset');
 });
 
-$('#btn-export').addEventListener('click', () => {
-  copy(JSON.stringify(PLAN, null, 2), 'Plan JSON copied');
-});
-
-$('#btn-copy-json').addEventListener('click', () => {
-  copy($('#json-box').value, 'Copied');
-});
+/* --- export ---------------------------------------------------------- */
+$('#btn-export').addEventListener('click', () => copy(JSON.stringify(PLAN, null, 2), 'Plan JSON copied'));
+$('#btn-copy-json').addEventListener('click', () => copy($('#json-box').value, 'Copied'));
 
 $('#btn-load-json').addEventListener('click', () => {
   const warn = $('#json-warn');
   try {
     const p = JSON.parse($('#json-box').value);
     if (!p || typeof p !== 'object') throw new Error('Not an object');
-    p.components = p.components || [];
-    p.modifiers  = p.modifiers  || [];
     p.meta = p.meta || {}; p.payee = p.payee || {};
-    p.payee.targetIncentive = p.payee.targetIncentive || { mode: 'percent', value: 0 };
-    PLAN = p;
-    warn.textContent = '';
-    renderAll();
-    toast('Plan loaded');
-  } catch (err) {
-    warn.textContent = 'Invalid JSON: ' + err.message;
-  }
+    p.rateTables = p.rateTables || []; p.rules = p.rules || [];
+    p.components = p.components || []; p.modifiers = p.modifiers || [];
+    PLAN = p; warn.textContent = '';
+    renderAll(); toast('Plan loaded');
+  } catch (err) { warn.textContent = 'Invalid JSON: ' + err.message; }
+});
+
+$('#btn-copy-detail').addEventListener('click', () => {
+  const r = window.LAST_RESULT || calculate(PLAN, DATA);
+  const cols = DATA.columns.concat(['Rule matched', 'Calculation', 'Credit %', 'Commission']);
+  const rows = r.detail.map(d => {
+    const o = {};
+    DATA.columns.forEach(c => { o[c] = d.row[c]; });
+    o['Rule matched'] = d.ruleName; o['Calculation'] = d.note;
+    o['Credit %'] = d.credit; o['Commission'] = d.commission.toFixed(2);
+    return o;
+  });
+  copy(toCSV(cols, rows), 'Deal detail copied as CSV');
 });
 
 $('#btn-copy-audit').addEventListener('click', () => {
-  const r = window.LAST_RESULT || calculate(PLAN);
-  const lines = [
-    '# ' + (PLAN.meta.planName || 'Commission calculation'),
-    '',
+  const r = window.LAST_RESULT || calculate(PLAN, DATA);
+  const L = [
+    '# ' + (PLAN.meta.planName || 'Commission calculation'), '',
     'Payee: ' + (PLAN.payee.name || '—') + (PLAN.payee.id ? ' (' + PLAN.payee.id + ')' : ''),
     'Period: ' + fmtDate(PLAN.meta.periodStart) + ' – ' + fmtDate(PLAN.meta.periodEnd),
-    'Generated: ' + new Date().toISOString(),
-    '',
-    '## Audit trail',
-    ''
+    'Deal data: ' + (DATA.name || 'none') + ' — ' + DATA.rows.length + ' rows',
+    'Generated: ' + new Date().toISOString(), '', '## Audit trail', ''
   ];
   r.audit.forEach(s => {
-    if (s.group) lines.push('', '### ' + s.label, '');
-    else lines.push(String(s.n).padStart(2, '0') + '. **' + s.label + '** — `' + s.formula + '` = **' + s.display + '**');
+    if (s.group) L.push('', '### ' + s.label, '');
+    else L.push(String(s.n).padStart(2, '0') + '. **' + s.label + '** — `' + s.formula + '` = **' + s.display + '**');
   });
-  lines.push('', '## Result', '',
-    '- Total variable earnings: ' + money(r.variable),
-    '- Prorated base salary: ' + money(r.proratedBase),
-    '- Estimated total compensation: ' + money(r.total));
-  if (r.warnings.length) lines.push('', '## Warnings', '', ...r.warnings.map(x => '- ' + x));
-  copy(lines.join('\n'), 'Audit trail copied as Markdown');
+  L.push('', '## Result', '',
+    '- Deal-based commission: ' + money(r.dealTotal),
+    '- Quota-based commission: ' + money(r.quotaTotal),
+    '- Total variable earnings: ' + money(r.variable));
+  if (r.warnings.length) L.push('', '## Warnings', '', ...r.warnings.map(x => '- ' + x));
+  copy(L.join('\n'), 'Audit trail copied as Markdown');
 });
 
 /* ------------------------------ 6. UTIL UI ----------------------------- */
-
 let toastTimer;
 function toast(msg) {
   const t = $('#toast');
-  t.textContent = msg;
-  t.classList.add('on');
+  t.textContent = msg; t.classList.add('on');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('on'), 2200);
 }
-
 function copy(text, msg) {
   const done = () => toast(msg);
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(done, () => fallback());
-  } else fallback();
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+  else fallback();
   function fallback() {
     const ta = document.createElement('textarea');
     ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
     document.body.appendChild(ta); ta.select();
-    try { document.execCommand('copy'); done(); } catch (e) { toast('Copy failed — select the JSON manually'); }
+    try { document.execCommand('copy'); done(); } catch (e) { toast('Copy failed — select the text manually'); }
     document.body.removeChild(ta);
   }
 }
 
-/* expose the engine for the future agent layer / console testing */
-window.CommissionEngine = { calculate, defaultPlan, getPlan: () => PLAN, setPlan: p => { PLAN = p; renderAll(); } };
+/* exposed for the agent layer / console testing */
+window.CommissionEngine = {
+  calculate, defaultPlan, csvToData, parseCSV,
+  getPlan: () => PLAN, getData: () => DATA,
+  setPlan: p => { PLAN = p; renderAll(); },
+  setData: d => { DATA = d; renderAll(); }
+};
 
+/* boot with the sample so the page is never empty */
+DATA = csvToData(SAMPLE_CSV, 'sample-deals.csv');
 renderAll();
 </script>
 </body>
