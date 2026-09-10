@@ -5,8 +5,8 @@ const script = html.split('<script>')[1].split('</script>')[0];
 const engineSrc = script.split('/* ------------------------------ 4. RENDER')[0];
 const mod = { exports: {} };
 new Function('module', engineSrc +
-  '\nmodule.exports={calculate,defaultPlan,csvToData,parseCSV,SAMPLE_CSV,applyValueTable,ruleMatches,testCondition,num};')(mod);
-const { calculate, defaultPlan, csvToData, parseCSV, SAMPLE_CSV, applyValueTable, testCondition, num } = mod.exports;
+  '\nmodule.exports={calculate,defaultPlan,csvToData,parseCSV,SAMPLE_CSV,applyValueTable,walkBands,ruleMatches,testCondition,num};')(mod);
+const { calculate, defaultPlan, csvToData, SAMPLE_CSV, applyValueTable, walkBands, testCondition, num } = mod.exports;
 
 let pass = 0, fail = 0;
 const near = (a, b, tol = 0.005) => Math.abs(a - b) <= tol;
@@ -16,12 +16,30 @@ function check(name, actual, expected) {
   else { fail++; console.log('  FAIL  ' + name + '  expected ' + expected + ', got ' + actual); }
 }
 const sample = () => csvToData(SAMPLE_CSV, 'sample-deals.csv');
+const byId = r => { const o = {}; r.detail.forEach(x => { o[x.row['Deal ID']] = x; }); return o; };
+
+/* Isolated cumulative fixture: $15,000 bands at 2 / 4 / 6 / 8 percent. */
+const BANDS = [{ from: 0, to: 15000, rate: 2 }, { from: 15000, to: 30000, rate: 4 },
+               { from: 30000, to: 45000, rate: 6 }, { from: 45000, to: null, rate: 8 }];
+function cumPlan(mode, opts) {
+  opts = opts || {};
+  const p = defaultPlan();
+  p.components = []; p.modifiers = [];
+  p.rateTables = [{ id: 'rt', name: 'ACV', basis: 'cumulative', mode,
+                    poolBy: opts.poolBy || '', openingBalance: opts.opening || 0, tiers: BANDS }];
+  p.rules = [{ id: 'r', name: 'All', enabled: true, match: 'all', conditions: [],
+               action: { type: 'rateTable', measureField: 'ACV', rateTableId: 'rt', creditPctField: 'Credit %' } }];
+  p.accrual = { sortField: 'sortField' in opts ? opts.sortField : 'Seq', direction: opts.direction || 'asc' };
+  return p;
+}
+const equalDeals   = () => csvToData('Seq,Type,ACV,Credit %\n1,A,20000,100\n2,B,20000,100\n3,A,20000,100', 't.csv');
+const unequalDeals = () => csvToData('Seq,Type,ACV,Credit %\n1,A,10000,100\n2,A,30000,100\n3,A,20000,100', 'u.csv');
 
 /* ---- 1. CSV parsing -------------------------------------------------- */
 console.log('\n1. CSV parsing');
 let d = sample();
 check('columns', d.columns.length, 6);
-check('rows', d.rows.length, 8);
+check('rows', d.rows.length, 11);
 check('first deal id', d.rows[0]['Deal ID'], 'D-1001');
 check('deal value read as text', d.rows[0]['Deal Value'], '310000');
 
@@ -33,72 +51,176 @@ check('currency string -> number', num('$1,250.50'), 1250.5);
 check('parenthesised negative', num('(400)'), -400);
 check('duplicate headers disambiguated', csvToData('A,A\n1,2').columns.join('|'), 'A|A (2)');
 
-/* ---- 2. deal rules, hand-computed ------------------------------------ */
-console.log('\n2. Sample plan — deal-by-deal (hand-computed)');
+/* ---- 2. per-deal rules, hand-computed -------------------------------- */
+console.log('\n2. Sample plan — per-deal rules');
 let r = calculate(defaultPlan(), sample());
-const byDeal = {};
-r.detail.forEach(x => { byDeal[x.row['Deal ID']] = x; });
+let D = byId(r);
+check('D-1001 succession marginal 250k@4 + 60k@5', D['D-1001'].commission, 13000);
+check('D-1002 transition cliff 185k x 3%', D['D-1002'].commission, 5550);
+check('D-1003 full build flat 9000 x 50% credit', D['D-1003'].commission, 4500);
+check('D-1004 succession 240k @4%', D['D-1004'].commission, 9600);
+check('D-1005 transition cliff 415k x 4%', D['D-1005'].commission, 16600);
+check('D-1006 full build flat 5000', D['D-1006'].commission, 5000);
+check('D-1007 succession 10000+12500+3600', D['D-1007'].commission, 26100);
 
-check('D-1001 succession marginal 250k@4 + 60k@5', byDeal['D-1001'].commission, 13000);
-check('D-1002 transition cliff 185k x 3%', byDeal['D-1002'].commission, 5550);
-check('D-1003 full build flat 9000 x 50% credit', byDeal['D-1003'].commission, 4500);
-check('D-1004 succession 240k @4%', byDeal['D-1004'].commission, 9600);
-check('D-1005 transition cliff 415k x 4%', byDeal['D-1005'].commission, 16600);
-check('D-1006 full build flat 5000', byDeal['D-1006'].commission, 5000);
-check('D-1007 succession 10000+12500+3600', byDeal['D-1007'].commission, 26100);
-check('D-1008 referral catch-all 2% of 95k', byDeal['D-1008'].commission, 1900);
-check('deal total (before modifiers)', r.dealGross, 82250);
-check('no unmatched deals', r.unmatched, 0);
+/* ---- 3. cumulative pool in the sample -------------------------------- */
+console.log('\n3. Sample plan — cumulative ACV pool ($15k bands, 2/4/6/8%)');
+check('D-1008 balance 0->20k: 15k@2 + 5k@4', D['D-1008'].commission, 500);
+check('D-1009 balance 20k->40k: 10k@4 + 10k@6', D['D-1009'].commission, 1000);
+check('D-1010 balance 40k->60k: 5k@6 + 15k@8', D['D-1010'].commission, 1500);
+check('D-1011 12k at 50% credit accrues 6k @8%', D['D-1011'].commission, 480);
+let pool = r.pools[0];
+check('one pool', r.pools.length, 1);
+check('pool volume', pool.volume, 66000);
+check('pool ending balance', pool.balance, 66000);
+check('final band reached', pool.finalTier, '$45,000+');
+check('pool commission', pool.commission, 3480);
+check('bands sum to pool commission',
+  pool.bands.reduce((s, b) => s + b.commission, 0), pool.commission);
+check('band volumes sum to pool volume',
+  pool.bands.reduce((s, b) => s + b.volume, 0), pool.volume);
+check('deal total = per-deal 80350 + pool 3480', r.dealGross, 83830);
 
-/* ---- 3. quota side --------------------------------------------------- */
-console.log('\n3. Quota component (actual summed from deal data)');
-check('actual = sum of Deal Value', r.components[0].actual, 2490000);
-check('attainment 2.49M / 2.5M', r.components[0].attainment, 99.6);
-check('marginal curve pays 99.6%', r.components[0].payoutPct, 99.6);
-check('quota payout 40000 x 99.6%', r.quotaGross, 39840);
-
-/* ---- 4. modifiers & total -------------------------------------------- */
-console.log('\n4. Modifier and total');
-check('subtotal', r.subtotal, 122090);
-check('total after 0.9 adherence', r.variable, 109881);
+/* ---- 4. quota, modifiers, total -------------------------------------- */
+console.log('\n4. Quota side and total');
+check('actual = sum of Deal Value', r.components[0].actual, 2467000);
+check('attainment 2.467M / 2.5M', r.components[0].attainment, 98.68);
+check('quota payout 40000 x 98.68%', r.quotaGross, 39472);
+check('subtotal', r.subtotal, 123302);
+check('total after 0.9 adherence', r.variable, 110971.8);
 check('no warnings', r.warnings.length, 0);
 
-/* ---- 5. modifier scoping --------------------------------------------- */
-console.log('\n5. Modifier scope');
+/* ---- 5. the headline case: three $20k deals, $15k bands -------------- */
+console.log('\n5. Three $20,000 deals against $15,000 bands');
+r = calculate(cumPlan('marginal'), equalDeals());
+let items = r.detail.map(x => x.commission);
+check('deal 1 starts in tier 1', items[0], 500);      // 15k@2 + 5k@4
+check('deal 2 spans tiers 2-3',  items[1], 1000);     // 10k@4 + 10k@6
+check('deal 3 ends in tier 4',   items[2], 1500);     // 5k@6 + 15k@8
+check('total marginal', r.dealGross, 3000);
+check('ends in the top band', r.pools[0].finalTier, '$45,000+');
+check('blended rate on $60k', r.dealGross / 60000 * 100, 5);
+
+console.log('\n   same deals, retroactive re-rate');
+r = calculate(cumPlan('retro'), equalDeals());
+check('every deal re-rated at 8%', r.detail.every(x => near(x.commission, 1600)), true);
+check('total retro = 60000 x 8%', r.dealGross, 4800);
+check('reports what as-accrued would have paid', r.pools[0].retro.asAccrued, 3000);
+check('true-up amount', r.pools[0].commission - r.pools[0].retro.asAccrued, 1800);
+check('final band named', r.pools[0].retro.tier, '$45,000+');
+
+console.log('\n   same deals, whole deal at the tier you were in');
+r = calculate(cumPlan('wholeDeal'), equalDeals());
+items = r.detail.map(x => x.commission);
+check('deal 1 at 2% (balance was 0)',      items[0], 400);
+check('deal 2 at 4% (balance was 20k)',    items[1], 800);
+check('deal 3 at 6% (balance was 40k)',    items[2], 1200);
+check('total whole-deal', r.dealGross, 2400);
+check('no band splitting', r.pools[0].items.every(it => it.parts.length === 1), true);
+
+/* ---- 6. accrual order ------------------------------------------------ */
+console.log('\n6. Accrual order');
+r = calculate(cumPlan('marginal', { direction: 'desc' }), equalDeals());
+check('desc credits row 3 first', r.accrualOrder.join(','), '2,1,0');
+check('row 3 now earns the first-band amount', r.detail[2].commission, 500);
+check('row 1 now earns the top-band amount', r.detail[0].commission, 1500);
+check('marginal total is order-independent', r.dealGross, 3000);
+check('detail stays in original row order',
+  r.detail.map(x => x.row.Seq).join(','), '1,2,3');
+
+r = calculate(cumPlan('wholeDeal'), unequalDeals());
+check('whole-deal asc: 10k@2 + 30k@2 + 20k@6', r.dealGross, 200 + 600 + 1200);
+r = calculate(cumPlan('wholeDeal', { direction: 'desc' }), unequalDeals());
+check('whole-deal desc: 20k@2 + 30k@4 + 10k@8', r.dealGross, 400 + 1200 + 800);
+
+r = calculate(cumPlan('marginal', { sortField: 'ACV' }), unequalDeals());
+check('numeric column sorts numerically, not as text',
+  r.accrualOrder.join(','), '0,2,1');
+r = calculate(cumPlan('marginal', { sortField: '' }), unequalDeals());
+check('blank sort field keeps file order', r.accrualOrder.join(','), '0,1,2');
+
+/* ---- 7. pools, opening balances, credit splits ----------------------- */
+console.log('\n7. Pool scoping, carry-in and splits');
+r = calculate(cumPlan('marginal', { poolBy: 'Type' }), equalDeals());
+check('poolBy splits into two balances', r.pools.length, 2);
+const pA = r.pools.find(p => p.poolByValue === 'A'), pB = r.pools.find(p => p.poolByValue === 'B');
+check('pool A holds two deals', pA.items.length, 2);
+check('pool A balance', pA.balance, 40000);
+check('pool A commission 500 + 1000', pA.commission, 1500);
+check('pool B is its own balance', pB.balance, 20000);
+check('pool B commission', pB.commission, 500);
+check('total across pools', r.dealGross, 2000);
+
+r = calculate(cumPlan('marginal', { opening: 30000 }), equalDeals());
+check('opening balance starts in band 3', r.detail[0].commission, 900 + 400);
+check('ending balance includes carry-in', r.pools[0].balance, 90000);
+check('volume excludes carry-in', r.pools[0].volume, 60000);
+check('total with carry-in', r.dealGross, 1300 + 1600 + 1600);
+
+r = calculate(cumPlan('retro', { opening: 40000 }), equalDeals());
+check('retro pays only this period volume', r.dealGross, 60000 * 0.08);
+
+let half = csvToData('Seq,Type,ACV,Credit %\n1,A,20000,50\n2,A,20000,100', 'h.csv');
+r = calculate(cumPlan('marginal'), half);
+check('50% credit accrues half the ACV', r.pools[0].volume, 30000);
+check('deal 1 credited 10000 -> all in band 1', r.detail[0].commission, 200);
+check('deal 2 credited 20000 from 10000', r.detail[1].commission, 100 + 600);
+
+/* ---- 8. cumulative edge cases ---------------------------------------- */
+console.log('\n8. Cumulative edge cases');
+r = calculate(cumPlan('marginal'), csvToData('Seq,Type,ACV,Credit %\n1,A,15000,100', 'e.csv'));
+check('deal landing exactly on a break stays in band 1', r.dealGross, 300);
+r = calculate(cumPlan('wholeDeal'), csvToData('Seq,Type,ACV,Credit %\n1,A,15000,100\n2,A,1,100', 'e.csv'));
+check('next deal at balance 15000 uses band 2', r.detail[1].commission, 0.04);
+r = calculate(cumPlan('marginal'), csvToData('Seq,Type,ACV,Credit %\n1,A,0,100', 'z.csv'));
+check('zero-value deal earns nothing', r.dealGross, 0);
+check('but still counts as accrued', r.pools[0].items.length, 1);
+r = calculate(cumPlan('marginal'), csvToData('Seq,Type,ACV,Credit %\n1,A,500000,100', 'b.csv'));
+check('one huge deal walks every band', r.dealGross, 300 + 600 + 900 + 455000 * 0.08);
+check('all four bands engaged', r.pools[0].bands.length, 4);
+
+let noTiers = cumPlan('marginal'); noTiers.rateTables[0].tiers = [];
+r = calculate(noTiers, equalDeals());
+check('table with no bands pays nothing', r.dealGross, 0);
+
+/* ---- 9. modifier scoping --------------------------------------------- */
+console.log('\n9. Modifier scope');
 let p = defaultPlan(); p.modifiers[0].appliesTo = 'quota';
 r = calculate(p, sample());
-check('deal side untouched', r.dealTotal, 82250);
-check('quota side x0.9', r.quotaTotal, 39840 * 0.9);
-check('total', r.variable, 82250 + 39840 * 0.9);
+check('deal side untouched', r.dealTotal, 83830);
+check('quota side x0.9', r.quotaTotal, 39472 * 0.9);
 
 p = defaultPlan(); p.modifiers[0].appliesTo = 'deals';
 r = calculate(p, sample());
-check('deal side x0.9', r.dealTotal, 82250 * 0.9);
-check('quota side untouched', r.quotaTotal, 39840);
-check('gross is reported unmodified', r.dealGross, 82250);
+check('deal side x0.9', r.dealTotal, 83830 * 0.9);
+check('quota side untouched', r.quotaTotal, 39472);
+check('gross reported unmodified', r.dealGross, 83830);
 check('gross + gross = subtotal', r.dealGross + r.quotaGross, r.subtotal);
 
-/* ---- 6. rule ordering, first match wins ------------------------------ */
-console.log('\n6. Rule ordering and enablement');
+/* ---- 10. rule ordering and enablement -------------------------------- */
+console.log('\n10. Rule ordering and enablement');
 p = defaultPlan();
-p.rules.unshift({ id: 'r0', name: 'Cap everything', enabled: true, match: 'all', conditions: [],
+p.rules.unshift({ id: 'r0', name: 'Flat everything', enabled: true, match: 'all', conditions: [],
   action: { type: 'fixed', measureField: 'Deal Value', amount: 100, percent: 0, rateTableId: '', creditPctField: '' } });
 r = calculate(p, sample());
-check('catch-all first swallows all deals', r.dealGross, 800);
+check('catch-all first swallows all 11 deals', r.dealGross, 1100);
+check('cumulative pool never forms', r.pools.length, 0);
 
-p = defaultPlan(); p.rules[0].enabled = false;      // disable Succession
+p = defaultPlan();
+p.rules[0].enabled = false;                                   // disable Succession
+p.rules[3].action = { type: 'percent', measureField: 'Deal Value', percent: 2, creditPctField: 'Credit %' };
 r = calculate(p, sample());
-check('disabled rule falls through to 2% catch-all',
-  r.detail.find(x => x.row['Deal ID'] === 'D-1001').commission, 310000 * 0.02);
+check('disabled rule falls through to the catch-all',
+  byId(r)['D-1001'].commission, 310000 * 0.02);
 
-p = defaultPlan(); p.rules.pop();                    // remove catch-all
+p = defaultPlan(); p.rules.pop();                             // remove catch-all
 r = calculate(p, sample());
-check('referral now unmatched', r.unmatched, 1);
-check('unmatched pays nothing', r.dealGross, 82250 - 1900);
+check('four referral deals now unmatched', r.unmatched, 4);
+check('unmatched pay nothing', r.dealGross, 80350);
 check('warns about unmatched', r.warnings.some(w => w.includes('matched no rule')), true);
 
-/* ---- 7. condition operators ------------------------------------------ */
-console.log('\n7. Condition operators');
+/* ---- 11. condition operators ----------------------------------------- */
+console.log('\n11. Condition operators');
 const row = { Type: 'Full Build', Value: '250000', Rep: '', Note: 'Q3 renewal' };
 const t = (op, field, value) => testCondition(row, { field, op, value });
 check('is (case-insensitive)', t('is', 'Type', 'full build'), true);
@@ -116,7 +238,6 @@ check('between outside', t('between', 'Value', '300000, 400000'), false);
 check('blank', t('blank', 'Rep', ''), true);
 check('notblank', t('notblank', 'Type', ''), true);
 
-console.log('\n   match: all vs any');
 p = defaultPlan();
 p.rules[0].conditions = [{ field: 'Deal Type', op: 'is', value: 'Succession' },
                          { field: 'Deal Value', op: 'gte', value: '500000' }];
@@ -126,8 +247,8 @@ p.rules[0].match = 'any';
 r = calculate(p, sample());
 check('OR widens to 3 deals', r.byRule[0].count, 3);
 
-/* ---- 8. rate table shapes -------------------------------------------- */
-console.log('\n8. Rate table shapes');
+/* ---- 12. per-deal rate table shapes ---------------------------------- */
+console.log('\n12. Per-deal rate table shapes');
 const marg = { mode: 'marginal', tiers: [{ from: 0, to: 100000, rate: 2 }, { from: 100000, to: null, rate: 5 }] };
 check('marginal 80k', applyValueTable(marg, 80000).amount, 1600);
 check('marginal 300k = 2000 + 10000', applyValueTable(marg, 300000).amount, 12000);
@@ -138,83 +259,85 @@ const flat = { mode: 'flat', tiers: [{ from: 0, to: 100000, rate: 1000 }, { from
 check('flat below break', applyValueTable(flat, 50000).amount, 1000);
 check('flat above break', applyValueTable(flat, 900000).amount, 4000);
 check('missing table pays 0', applyValueTable(null, 500000).amount, 0);
+check('walkBands is order-agnostic over a split range',
+  walkBands(BANDS, 0, 20000).total, walkBands(BANDS, 0, 15000).total + walkBands(BANDS, 15000, 20000).total);
 
-/* ---- 9. credit % / exclude ------------------------------------------- */
-console.log('\n9. Credit split and exclusions');
-p = defaultPlan();
+/* ---- 13. credit split and exclusions --------------------------------- */
+console.log('\n13. Credit split and exclusions');
 let dd = sample(); dd.rows[0]['Credit %'] = '25';
-r = calculate(p, dd);
-check('25% credit on 13000', r.detail[0].commission, 3250);
+r = calculate(defaultPlan(), dd);
+check('25% credit on a per-deal rule', r.detail[0].commission, 3250);
 dd = sample(); dd.rows[0]['Credit %'] = '';
-r = calculate(p, dd);
+r = calculate(defaultPlan(), dd);
 check('blank credit treated as 100%', r.detail[0].commission, 13000);
 
 p = defaultPlan();
 p.rules[0].action = { type: 'exclude', measureField: 'Deal Value', creditPctField: '' };
 r = calculate(p, sample());
-check('excluded deals pay 0', r.detail.filter(x => x.row['Deal Type'] === 'Succession')
-  .every(x => x.commission === 0), true);
-check('excluded removed from total', r.dealGross, 82250 - 13000 - 9600 - 26100);
+check('excluded deals pay 0',
+  r.detail.filter(x => x.row['Deal Type'] === 'Succession').every(x => x.commission === 0), true);
+check('excluded removed from total', r.dealGross, 83830 - 13000 - 9600 - 26100);
 
-/* ---- 10. proration --------------------------------------------------- */
-console.log('\n10. Proration (deal commission is never prorated)');
+/* ---- 14. proration --------------------------------------------------- */
+console.log('\n14. Proration');
 p = defaultPlan(); p.payee.startDate = '2026-07-01';
 r = calculate(p, sample());
 check('days on plan', r.daysOnPlan, 184);
 check('proration', r.proration, 184 / 365);
-check('deal commission unaffected', r.dealGross, 82250);
+check('deal commission is never prorated', r.dealGross, 83830);
 check('prorated target', r.proratedTarget, 40000 * 184 / 365);
-check('prorated quota drives higher attainment',
-  r.components[0].attainment, 2490000 / (2500000 * 184 / 365) * 100);
+check('prorated quota lifts attainment', r.components[0].attainment, 2467000 / (2500000 * 184 / 365) * 100);
 check('cap holds payout at 250%', r.components[0].payoutPct, 250);
-
 p.payee.prorate = false;
 r = calculate(p, sample());
 check('proration off -> factor 1', r.proration, 1);
 
-/* ---- 11. thresholds and empty states --------------------------------- */
-console.log('\n11. Thresholds and empty states');
+/* ---- 15. thresholds, empty states, missing columns ------------------- */
+console.log('\n15. Thresholds, empty states, missing columns');
 p = defaultPlan(); p.components[0].payout.thresholdPct = 100;
 r = calculate(p, sample());
-check('99.6% below 100% threshold pays 0', r.quotaTotal, 0);
+check('98.68% below 100% threshold pays 0', r.quotaGross, 0);
 
 p = defaultPlan(); p.components = [];
 r = calculate(p, sample());
-check('no components -> deals only', r.variable, 82250 * 0.9);
+check('no components -> deals only', r.variable, 83830 * 0.9);
 
 p = defaultPlan(); p.rules = [];
 r = calculate(p, sample());
-check('no rules -> every deal unmatched', r.unmatched, 8);
+check('no rules -> every deal unmatched', r.unmatched, 11);
 check('deal total 0', r.dealGross, 0);
+check('no pools form', r.pools.length, 0);
 
 r = calculate(defaultPlan(), { columns: [], rows: [] });
 check('no deal data -> quota only', r.dealGross, 0);
-check('manual-source component still needs data', r.components[0].actual, 0);
+check('summed component reads 0', r.components[0].actual, 0);
 
 p = defaultPlan(); p.components[0].actualSource = 'manual'; p.components[0].actual = 2500000;
 r = calculate(p, { columns: [], rows: [] });
 check('manual actual at 100% pays full target', r.quotaGross, 40000);
 
-/* ---- 11b. missing column detection ------------------------------------ */
-console.log('\n11b. Missing column detection');
 const alt = csvToData('Opportunity,Segment,Booking Amount\nOPP-1,Enterprise,1200000', 'alt.csv');
 r = calculate(defaultPlan(), alt);
 check('warns when referenced columns are absent',
   r.warnings.some(w => w.includes('not found in the loaded data')), true);
 check('names the missing measure column', r.warnings.some(w => w.includes('"Deal Value"')), true);
 check('missing columns measure zero', r.dealGross, 0);
-check('no false alarm on the sample', calculate(defaultPlan(), sample()).warnings.length, 0);
 
-/* ---- 12. audit integrity --------------------------------------------- */
-console.log('\n12. Audit trail');
+/* ---- 16. audit integrity --------------------------------------------- */
+console.log('\n16. Audit trail');
 r = calculate(defaultPlan(), sample());
 const steps = r.audit.filter(s => !s.group);
 check('every step carries a formula', steps.every(s => s.formula && s.display), true);
 check('numbered sequentially', steps.every((s, i) => s.n === i + 1), true);
 check('final step equals total', steps[steps.length - 1].value, r.variable);
-check('detail rows match deal count', r.detail.length, 8);
-check('detail sums to deal total before modifiers',
-  r.detail.reduce((s, x) => s + x.commission, 0), 82250);
+check('detail rows match deal count', r.detail.length, 11);
+check('detail sums to deal gross', r.detail.reduce((s, x) => s + x.commission, 0), 83830);
+check('audit records the accrual order',
+  steps.some(s => s.label === 'Accrual order' && s.formula.includes('Close Date')), true);
+check('audit names each cumulative band',
+  r.pools[0].bands.every(b => steps.some(s => s.label.includes('band ' + b.label))), true);
+check('pool total appears in the audit',
+  steps.some(s => s.label.includes('pool total') && near(s.value, 3480)), true);
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
 process.exit(fail ? 1 : 0);

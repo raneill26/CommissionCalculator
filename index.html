@@ -317,6 +317,20 @@ footer .r{margin-left:auto}
           <span class="meta" id="data-meta"></span>
         </div>
         <div style="margin-top:12px" id="data-cols"></div>
+        <div class="fields" style="margin-top:16px">
+          <div class="f">
+            <label>Credit deals in order of</label>
+            <select class="bare" id="accrual-field" data-path="accrual.sortField"></select>
+            <p class="hint">Sets the sequence for cumulative balances.</p>
+          </div>
+          <div class="f">
+            <label>Direction</label>
+            <select class="bare" id="accrual-dir" data-path="accrual.direction">
+              <option value="asc">Oldest / smallest first</option>
+              <option value="desc">Newest / largest first</option>
+            </select>
+          </div>
+        </div>
         <details class="io" open>
           <summary>Preview rows</summary>
           <div class="body">
@@ -342,10 +356,14 @@ footer .r{margin-left:auto}
         <span class="num">03</span><h2>Rate tables</h2>
         <div class="tools">
           <button class="btn sm" data-add-rt="value">+ Deal-value table</button>
+          <button class="btn sm" data-add-rt="cumulative">+ Cumulative table</button>
           <button class="btn sm" data-add-rt="attainment">+ Attainment table</button>
         </div>
       </div>
-      <p class="sec-note">Reusable tier tables. <strong>Deal-value</strong> tables tier on the size of a single deal and are used by rules. <strong>Attainment</strong> tables tier on percent-of-quota and are used by quota components. Give each one a name — rules reference them by name.</p>
+      <p class="sec-note">Reusable tier tables, referenced by rules and components.
+        <strong>Deal-value</strong> tables tier on the size of one deal, in isolation.
+        <strong>Cumulative</strong> tables tier on a running balance across the period — three $20k deals against $15k bands walk from the first band up to the fourth.
+        <strong>Attainment</strong> tables tier on percent-of-quota and are used by quota components.</p>
       <div id="rt-list"></div>
     </div>
   </section>
@@ -388,25 +406,34 @@ footer .r{margin-left:auto}
     </div>
   </section>
 
-  <!-- 07 / 08 STATEMENT + AUDIT -->
+  <!-- 07 CUMULATIVE POOLS -->
+  <section id="sec-pools">
+    <div class="card">
+      <div class="sec-head"><span class="num">07</span><h2>Cumulative pools</h2></div>
+      <p class="sec-note">Running balances built by the cumulative rate tables, and the band-by-band breakdown of what each one paid.</p>
+      <div id="pool-list"></div>
+    </div>
+  </section>
+
+  <!-- 08 / 09 STATEMENT + AUDIT -->
   <section>
     <div class="grid-2">
       <div class="card">
-        <div class="sec-head"><span class="num">07</span><h2>Commission statement</h2></div>
+        <div class="sec-head"><span class="num">08</span><h2>Commission statement</h2></div>
         <div class="tbl-scroll"><table class="stmt" id="stmt"></table></div>
       </div>
       <div class="card">
-        <div class="sec-head"><span class="num">08</span><h2>Audit trail</h2></div>
+        <div class="sec-head"><span class="num">09</span><h2>Audit trail</h2></div>
         <div id="audit"></div>
       </div>
     </div>
   </section>
 
-  <!-- 09 DEAL DETAIL -->
+  <!-- 10 DEAL DETAIL -->
   <section id="sec-detail">
     <div class="card">
       <div class="sec-head">
-        <span class="num">09</span><h2>Deal detail</h2>
+        <span class="num">10</span><h2>Deal detail</h2>
         <div class="tools"><button class="btn sm" id="btn-copy-detail">Copy as CSV</button></div>
       </div>
       <p class="sec-note">Every deal, the rule it matched, and the commission it produced. This is the line-level audit.</p>
@@ -417,7 +444,7 @@ footer .r{margin-left:auto}
   <!-- 10 PLAN JSON -->
   <section>
     <div class="card">
-      <div class="sec-head"><span class="num">10</span><h2>Plan definition</h2></div>
+      <div class="sec-head"><span class="num">11</span><h2>Plan definition</h2></div>
       <p class="sec-note">The plan — period, rate tables, rules, components, modifiers — is one JSON object, separate from the deal data. This is the handoff point for the agent layer: it writes this object, the engine executes it.</p>
       <details class="io">
         <summary>View / edit plan JSON</summary>
@@ -489,14 +516,22 @@ function tierHeaders(rt) {
       rt.mode === 'marginal' ? 'Rate (× per point)' :
       rt.mode === 'cliff'    ? 'Multiplier' : 'Payout (× target)' };
   }
+  if (rt.basis === 'cumulative') {
+    return { from: 'Balance from $', to: 'Balance to $', rate:
+      rt.mode === 'retro'     ? 'Rate % (applied to all volume)' :
+      rt.mode === 'wholeDeal' ? 'Rate % (of the whole deal)' : 'Rate % (of volume in band)' };
+  }
   return { from: 'From $', to: 'To $', rate:
     rt.mode === 'marginal' ? 'Rate % (of amount in band)' :
     rt.mode === 'cliff'    ? 'Rate % (of whole deal)' : 'Amount $ (per deal)' };
 }
 
 const MODE_LABELS = {
-  value:      { marginal: 'Marginal / banded',  cliff: 'Whole-deal rate',     flat: 'Flat amount per band' },
-  attainment: { marginal: 'Marginal / tiered',  cliff: 'Whole-payout multiplier', flat: 'Flat payout per tier' }
+  value:      { marginal: 'Marginal / banded',  cliff: 'Whole-deal rate',         flat: 'Flat amount per band' },
+  attainment: { marginal: 'Marginal / tiered',  cliff: 'Whole-payout multiplier', flat: 'Flat payout per tier' },
+  cumulative: { marginal: 'Marginal — each band earns its own rate',
+                retro:    'Retroactive — final band re-rates all volume',
+                wholeDeal:'Whole deal at the tier you were in' }
 };
 
 const MODE_BLURB = {
@@ -505,14 +540,21 @@ const MODE_BLURB = {
   'value.flat':          'Any deal landing in a band pays that flat dollar amount, regardless of size.',
   'attainment.marginal': 'Each attainment point inside a tier earns that tier’s rate. Only points above a break get the accelerator.',
   'attainment.cliff':    'Crossing a tier changes the multiplier applied to the entire payout, not only the amount above it.',
-  'attainment.flat':     'Landing anywhere in a tier pays that fixed share of the component target.'
+  'attainment.flat':     'Landing anywhere in a tier pays that fixed share of the component target.',
+  'cumulative.marginal': 'Deals accrue into a running balance. Each dollar of that balance earns the rate of the band it falls in, so a deal that straddles a break is split across both. Rate goes up as the year builds; nothing is re-rated.',
+  'cumulative.retro':    'Deals accrue into a running balance. The band reached by the end of the period is applied to the whole period’s volume — a true-up that pays the higher rate retroactively on everything.',
+  'cumulative.wholeDeal':'Deals accrue into a running balance. Each deal pays entirely at the rate of the band the balance sat in when that deal was credited — no splitting across bands, no re-rating.'
 };
 
 function defaultPlan() {
   return {
-    version: 2,
+    version: 3,
     meta: { planName: 'FY26 Practice Development Plan', periodStart: '2026-01-01', periodEnd: '2026-12-31' },
     payee: { name: 'Jordan Blake', id: 'EMP-1042', startDate: '', endDate: '', prorate: true, targetIncentive: 40000 },
+
+    /* Order deals are credited in. Only matters for cumulative rate tables,
+       where the band a deal earns depends on the balance before it. */
+    accrual: { sortField: 'Close Date', direction: 'asc' },
 
     rateTables: [
       { id: 'rt-succession', name: 'Succession — deal value', basis: 'value', mode: 'marginal',
@@ -521,6 +563,10 @@ function defaultPlan() {
         tiers: [ { from: 0, to: 200000, rate: 3 }, { from: 200000, to: 400000, rate: 3.5 }, { from: 400000, to: null, rate: 4 } ] },
       { id: 'rt-fullbuild', name: 'Full Build — flat per deal', basis: 'value', mode: 'flat',
         tiers: [ { from: 0, to: 300000, rate: 5000 }, { from: 300000, to: null, rate: 9000 } ] },
+      { id: 'rt-acv', name: 'ACV credit — cumulative', basis: 'cumulative', mode: 'marginal',
+        poolBy: '', openingBalance: 0,
+        tiers: [ { from: 0, to: 15000, rate: 2 }, { from: 15000, to: 30000, rate: 4 },
+                 { from: 30000, to: 45000, rate: 6 }, { from: 45000, to: null, rate: 8 } ] },
       { id: 'rt-quota', name: 'Standard quota curve', basis: 'attainment', mode: 'marginal',
         tiers: [ { from: 0, to: 100, rate: 1 }, { from: 100, to: 150, rate: 1.5 }, { from: 150, to: null, rate: 2 } ] }
     ],
@@ -535,9 +581,9 @@ function defaultPlan() {
       { id: 'r3', name: 'Full Build deals', enabled: true, match: 'all',
         conditions: [ { field: 'Deal Type', op: 'is', value: 'Full Build' } ],
         action: { type: 'rateTable', measureField: 'Deal Value', rateTableId: 'rt-fullbuild', percent: 0, amount: 0, creditPctField: 'Credit %' } },
-      { id: 'r4', name: 'Everything else', enabled: true, match: 'all',
+      { id: 'r4', name: 'Everything else — cumulative ACV', enabled: true, match: 'all',
         conditions: [],
-        action: { type: 'percent', measureField: 'Deal Value', rateTableId: '', percent: 2, amount: 0, creditPctField: 'Credit %' } }
+        action: { type: 'rateTable', measureField: 'Deal Value', rateTableId: 'rt-acv', percent: 0, amount: 0, creditPctField: 'Credit %' } }
     ],
 
     components: [
@@ -568,7 +614,10 @@ D-1004,Northgate Medical Group,Succession,2026-05-11,240000,100
 D-1005,Ridgeline Health Partners,Transition,2026-06-08,415000,100
 D-1006,Summit Family Care,Full Build,2026-07-19,265000,100
 D-1007,Baywood Clinic,Succession,2026-09-01,560000,100
-D-1008,Elmwood Associates,Referral,2026-09-22,95000,100`;
+D-1008,Elmwood Associates,Referral,2026-09-22,20000,100
+D-1009,Fairhaven Physicians,Referral,2026-10-06,20000,100
+D-1010,Oakmont Medical,Referral,2026-11-03,20000,100
+D-1011,Willow Creek Family,Referral,2026-11-20,12000,50`;
 
 let PLAN = defaultPlan();
 let DATA = { name: '', columns: [], rows: [] };
@@ -705,10 +754,29 @@ function describeCondition(c) {
   return (c.field || '?') + ' ' + o.label + (o.needsValue ? ' "' + (c.value == null ? '' : c.value) + '"' : '');
 }
 
+const sortTiers = rt => (rt && rt.tiers ? rt.tiers : []).slice().sort((a, b) => num(a.from) - num(b.from));
+
+/* Walk a dollar range [from, to) across bands. The shared primitive behind both
+   per-deal marginal tables and cumulative balances. */
+function walkBands(tiers, from, to) {
+  const parts = []; let total = 0;
+  tiers.forEach((t, ti) => {
+    const lo = num(t.from);
+    const hi = (t.to == null || t.to === '') ? Infinity : num(t.to);
+    const v = Math.max(0, Math.min(to, hi) - Math.max(from, lo));
+    if (v > 0) {
+      const rate = num(t.rate), c = v * rate / 100;
+      parts.push({ ti, volume: v, rate, commission: c, label: tierLabel(t, '$') });
+      total += c;
+    }
+  });
+  return { parts, total };
+}
+
 /* Apply a deal-value rate table to a dollar amount. Returns { amount, note } */
 function applyValueTable(rt, value) {
   if (!rt) return { amount: 0, note: 'no rate table' };
-  const tiers = (rt.tiers || []).slice().sort((a, b) => num(a.from) - num(b.from));
+  const tiers = sortTiers(rt);
   if (rt.mode === 'cliff') {
     const t = findTier(tiers, value);
     const r = t ? num(t.rate) : 0;
@@ -719,14 +787,45 @@ function applyValueTable(rt, value) {
     const r = t ? num(t.rate) : 0;
     return { amount: r, note: tierLabel(t, '$') + ' → ' + money0(r) + ' flat' };
   }
-  let amount = 0; const parts = [];
-  tiers.forEach(t => {
-    const from = num(t.from);
-    const to = (t.to == null || t.to === '') ? Infinity : num(t.to);
-    const span = Math.max(0, Math.min(value, to) - from);
-    if (span > 0) { amount += span * num(t.rate) / 100; parts.push(money0(span) + ' @ ' + num(t.rate) + '%'); }
-  });
-  return { amount, note: parts.join(' + ') || 'no band engaged' };
+  const w = walkBands(tiers, 0, value);
+  return { amount: w.total,
+           note: w.parts.map(p => money0(p.volume) + ' @ ' + p.rate + '%').join(' + ') || 'no band engaged' };
+}
+
+/* Credit one deal against a cumulative pool balance.
+   Returns { commission, parts, note } and does NOT mutate the pool. */
+function creditToPool(rt, tiers, balance, credited) {
+  if (!tiers.length) return { commission: 0, parts: [], note: 'no bands defined' };
+  const end = balance + credited;
+
+  if (rt.mode === 'wholeDeal') {
+    const t = findTier(tiers, balance);
+    const ti = tiers.indexOf(t), rate = t ? num(t.rate) : 0;
+    const commission = credited * rate / 100;
+    return {
+      commission,
+      parts: [{ ti, volume: credited, rate, commission, label: tierLabel(t, '$') }],
+      note: 'balance ' + money0(balance) + ' → in ' + tierLabel(t, '$') + ' @ ' + rate + '% on ' + money0(credited)
+    };
+  }
+
+  /* marginal (retro is re-rated in a later pass, and starts from the same walk) */
+  const w = walkBands(tiers, balance, end);
+  return {
+    commission: w.total,
+    parts: w.parts,
+    note: 'balance ' + money0(balance) + ' → ' + money0(end) + '  ·  ' +
+          (w.parts.map(p => money0(p.volume) + ' @ ' + p.rate + '%').join(' + ') || 'no band engaged')
+  };
+}
+
+/* Comparator for accrual order: numeric when both sides are numeric, else text. */
+function accrualCompare(a, b) {
+  const sa = String(a == null ? '' : a).trim(), sb = String(b == null ? '' : b).trim();
+  const na = parseFloat(sa.replace(/[^0-9.\-]/g, '')), nb = parseFloat(sb.replace(/[^0-9.\-]/g, ''));
+  const bothNum = /^[-$(]?[\d,.]+\)?$/.test(sa) && /^[-$(]?[\d,.]+\)?$/.test(sb) && isFinite(na) && isFinite(nb);
+  if (bothNum) return na - nb;
+  return sa < sb ? -1 : sa > sb ? 1 : 0;      // ISO dates sort correctly as text
 }
 
 /* Apply an attainment rate table. Returns { payoutPct, note } */
@@ -825,46 +924,130 @@ function calculate(plan, data) {
     if (missing.size) warnings.push('Referenced column(s) not found in the loaded data: ' +
       Array.from(missing).map(x => '"' + x + '"').join(', ') + '. Those values read as 0.');
   }
-  const detail = [];
   const byRule = rules.map(r => ({ id: r.id, name: r.name, count: 0, measure: 0, commission: 0, excluded: 0 }));
   const byRuleIdx = {}; rules.forEach((r, i) => { byRuleIdx[r.id] = i; });
-  let unmatched = 0, unmatchedMeasure = 0;
+  let unmatched = 0;
 
-  rows.forEach((row, i) => {
-    const rule = rules.find(r => ruleMatches(row, r));
+  /* pass 1 — match every row to the first rule that accepts it */
+  const matched = rows.map((row, i) => ({ i, row, rule: rules.find(r => ruleMatches(row, r)) || null }));
+
+  /* Accrual order. Only cumulative tables depend on it — the band a deal earns
+     is set by the balance standing before that deal is credited — but the order
+     is applied consistently so the audit is reproducible. */
+  const accrual = plan.accrual || {};
+  const ordered = matched.slice();
+  if (accrual.sortField) {
+    const dir = accrual.direction === 'desc' ? -1 : 1;
+    ordered.sort((a, b) =>
+      accrualCompare(a.row[accrual.sortField], b.row[accrual.sortField]) * dir || a.i - b.i);
+  }
+
+  /* pass 2 — credit each row, accumulating cumulative pools as we go */
+  const detail = new Array(rows.length);
+  const pools = {}, poolOrder = [];
+
+  ordered.forEach(m => {
+    const { row, i, rule } = m;
     if (!rule) {
       unmatched++;
-      detail.push({ i, row, ruleName: '— no rule matched —', measure: 0, note: 'unmatched', credit: 100, commission: 0, unmatched: true });
+      detail[i] = { i, row, ruleId: null, ruleName: '— no rule matched —', measure: 0,
+                    note: 'unmatched', credit: 100, commission: 0, unmatched: true };
       return;
     }
     const a = rule.action || {};
     const measure = a.measureField ? num(row[a.measureField]) : 0;
     const creditRaw = a.creditPctField ? row[a.creditPctField] : '';
     const credit = (creditRaw == null || String(creditRaw).trim() === '') ? 100 : num(creditRaw);
-    const slot = byRule[byRuleIdx[rule.id]];
 
     if (a.type === 'exclude') {
-      slot.count++; slot.excluded++;
-      detail.push({ i, row, ruleName: rule.name, measure, note: 'excluded by rule', credit, commission: 0 });
+      detail[i] = { i, row, ruleId: rule.id, ruleName: rule.name, measure,
+                    note: 'excluded by rule', credit, commission: 0, excluded: true };
       return;
     }
 
+    const rt = rtById[a.rateTableId];
+
+    /* --- cumulative: the deal accrues into a running balance --------- */
+    if (a.type === 'rateTable' && rt && rt.basis === 'cumulative') {
+      const poolByVal = rt.poolBy ? String(row[rt.poolBy] == null ? '' : row[rt.poolBy]).trim() : '';
+      const key = rt.id + '||' + poolByVal;
+      let pool = pools[key];
+      if (!pool) {
+        const opening = num(rt.openingBalance);
+        pool = pools[key] = { key, rt, tiers: sortTiers(rt), poolBy: rt.poolBy || '',
+                              poolByValue: poolByVal, opening, balance: opening,
+                              volume: 0, items: [], commission: 0 };
+        poolOrder.push(key);
+      }
+      /* Credit % reduces the volume that accrues — a 50% split earns credit for
+         half the ACV — rather than being applied to the payout afterwards. */
+      const credited = measure * credit / 100;
+      const out = creditToPool(rt, pool.tiers, pool.balance, credited);
+      pool.items.push({ i, credited, start: pool.balance, end: pool.balance + credited,
+                        parts: out.parts, commission: out.commission });
+      pool.balance += credited;
+      pool.volume  += credited;
+      detail[i] = { i, row, ruleId: rule.id, ruleName: rule.name, measure, credit,
+                    note: out.note, commission: out.commission, poolKey: key };
+      return;
+    }
+
+    /* --- per-deal ---------------------------------------------------- */
     let raw = 0, note = '';
-    if (a.type === 'percent')      { raw = measure * num(a.percent) / 100; note = num(a.percent) + '% of ' + money0(measure); }
-    else if (a.type === 'fixed')   { raw = num(a.amount);                  note = money0(num(a.amount)) + ' fixed'; }
+    if (a.type === 'percent')    { raw = measure * num(a.percent) / 100; note = num(a.percent) + '% of ' + money0(measure); }
+    else if (a.type === 'fixed') { raw = num(a.amount);                  note = money0(num(a.amount)) + ' fixed'; }
     else {
-      const rt = rtById[a.rateTableId];
       if (!rt) warnings.push('Rule "' + rule.name + '" points at a rate table that no longer exists.');
       const out = applyValueTable(rt, measure);
       raw = out.amount; note = out.note;
     }
-    const commission = raw * credit / 100;
-    slot.count++; slot.measure += measure; slot.commission += commission;
-    detail.push({ i, row, ruleName: rule.name, measure, note, credit, commission });
+    detail[i] = { i, row, ruleId: rule.id, ruleName: rule.name, measure, credit,
+                  note, commission: raw * credit / 100 };
+  });
+
+  /* pass 3 — retroactive pools re-rate every dollar at the final band */
+  const poolList = poolOrder.map(k => pools[k]);
+  poolList.forEach(pool => {
+    if (pool.rt.mode === 'retro') {
+      const t = findTier(pool.tiers, pool.balance);
+      const ti = pool.tiers.indexOf(t), rate = t ? num(t.rate) : 0;
+      const asAccrued = pool.items.reduce((s, it) => s + it.commission, 0);
+      pool.items.forEach(it => {
+        it.commission = it.credited * rate / 100;
+        it.parts = [{ ti, volume: it.credited, rate, commission: it.commission, label: tierLabel(t, '$') }];
+        const d = detail[it.i];
+        d.commission = it.commission;
+        d.note = 'retro @ ' + rate + '% (' + tierLabel(t, '$') + ' reached) on ' + money0(it.credited);
+      });
+      pool.retro = { rate, tier: tierLabel(t, '$'), asAccrued };
+    }
+    pool.commission = pool.items.reduce((s, it) => s + it.commission, 0);
+    pool.finalTier  = tierLabel(findTier(pool.tiers, pool.balance), '$');
+
+    const agg = {};
+    pool.items.forEach(it => (it.parts || []).forEach(pt => {
+      if (!agg[pt.ti]) agg[pt.ti] = { ti: pt.ti, label: pt.label, rate: pt.rate, volume: 0, commission: 0 };
+      agg[pt.ti].volume += pt.volume; agg[pt.ti].commission += pt.commission;
+    }));
+    pool.bands = Object.keys(agg).map(k => agg[k]).sort((x, y) => x.ti - y.ti);
+  });
+
+  /* roll the finished detail up by rule */
+  detail.forEach(d => {
+    if (!d || d.ruleId == null) return;
+    const s = byRule[byRuleIdx[d.ruleId]];
+    if (!s) return;
+    s.count++; s.measure += d.measure; s.commission += d.commission;
+    if (d.excluded) s.excluded++;
   });
 
   if (rows.length) {
     group('Deal-based commission');
+    if (accrual.sortField) {
+      step('Accrual order',
+           'credited in order of "' + accrual.sortField + '" ' + (accrual.direction === 'desc' ? 'descending' : 'ascending'),
+           rows.length, rows.length + ' rows');
+    }
     byRule.forEach((s, i) => {
       if (!s.count) return;
       const r = rules[i];
@@ -881,8 +1064,31 @@ function calculate(plan, data) {
     }
   }
 
-  let dealTotal = byRule.reduce((s, r) => s + r.commission, 0);
-  if (rows.length) step('Deal commission subtotal', byRule.filter(r => r.count).map(r => money(r.commission)).join(' + ') || 'none', dealTotal, money(dealTotal));
+  if (poolList.length) {
+    group('Cumulative pools');
+    poolList.forEach(pool => {
+      const nm = pool.rt.name + (pool.poolByValue ? ' · ' + pool.poolByValue : '');
+      if (pool.opening) step(nm + ' — opening balance', 'carried in from a prior period', pool.opening, money0(pool.opening));
+      step(nm + ' — volume credited',
+           pool.items.length + ' deal' + (pool.items.length === 1 ? '' : 's') + ' accrued (credit % applied)',
+           pool.volume, money(pool.volume));
+      step(nm + ' — ending balance', money0(pool.opening) + ' + ' + money0(pool.volume) + ' → ' + pool.finalTier,
+           pool.balance, money0(pool.balance));
+      if (pool.retro) {
+        step(nm + ' — retroactive re-rate',
+             'final band ' + pool.retro.tier + ' @ ' + pool.retro.rate + '% applied to all ' + money0(pool.volume) +
+             '  ·  as-accrued would have paid ' + money(pool.retro.asAccrued),
+             pool.commission, money(pool.commission));
+      } else {
+        pool.bands.forEach(bd => step(nm + ' — band ' + bd.label,
+             money0(bd.volume) + ' @ ' + bd.rate + '%', bd.commission, money(bd.commission)));
+        step(nm + ' — pool total', 'sum of bands', pool.commission, money(pool.commission));
+      }
+    });
+  }
+
+  let dealTotal = detail.reduce((s, d) => s + (d ? d.commission : 0), 0);
+  if (rows.length) step('Deal commission subtotal', 'every rule and pool', dealTotal, money(dealTotal));
 
   /* --- quota-based commission ---------------------------------------- */
   const comps = [];
@@ -978,6 +1184,7 @@ function calculate(plan, data) {
     dealTotal, quotaTotal,          // after modifiers
     subtotal, variable,
     byRule, rules, unmatched, detail, dealCount: rows.length,
+    pools: poolList, accrualOrder: ordered.map(m => m.i),
     components: comps, modsApplied, warnings, audit
   };
 }
@@ -990,10 +1197,12 @@ function fieldOptions(selected) {
   return '<option value="">— column —</option>' +
     cols.map(c => `<option value="${esc(c)}"${c === selected ? ' selected' : ''}>${esc(c)}</option>`).join('');
 }
-function rtOptions(selected, basis) {
-  const list = (PLAN.rateTables || []).filter(rt => rt.basis === basis);
+function rtOptions(selected, bases) {
+  const want = [].concat(bases);
+  const list = (PLAN.rateTables || []).filter(rt => want.includes(rt.basis));
+  const label = rt => rt.name + (rt.basis === 'cumulative' ? '  (cumulative)' : '');
   return '<option value="">— rate table —</option>' +
-    list.map(rt => `<option value="${esc(rt.id)}"${rt.id === selected ? ' selected' : ''}>${esc(rt.name)}</option>`).join('');
+    list.map(rt => `<option value="${esc(rt.id)}"${rt.id === selected ? ' selected' : ''}>${esc(label(rt))}</option>`).join('');
 }
 
 function renderSetup() {
@@ -1015,6 +1224,14 @@ function renderData() {
   $('#data-meta').textContent = DATA.rows.length + ' rows · ' + DATA.columns.length + ' columns';
   $('#data-cols').innerHTML = DATA.columns.map(c => `<span class="chip b">${esc(c)}</span>`).join('');
 
+  PLAN.accrual = PLAN.accrual || { sortField: '', direction: 'asc' };
+  const af = $('#accrual-field');
+  af.innerHTML = '<option value="">File order (as uploaded)</option>' +
+    DATA.columns.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  af.value = DATA.columns.includes(PLAN.accrual.sortField) ? PLAN.accrual.sortField : '';
+  if (af.value !== PLAN.accrual.sortField) PLAN.accrual.sortField = af.value;
+  $('#accrual-dir').value = PLAN.accrual.direction === 'desc' ? 'desc' : 'asc';
+
   const show = DATA.rows.slice(0, 8);
   $('#data-preview').innerHTML =
     '<thead><tr>' + DATA.columns.map(c => `<th>${esc(c)}</th>`).join('') + '</tr></thead>' +
@@ -1028,11 +1245,12 @@ function renderRateTables() {
   $('#rt-list').innerHTML = (PLAN.rateTables || []).map((rt, i) => {
     const b = 'rateTables.' + i;
     const h = tierHeaders(rt);
-    const unit = rt.basis === 'value' ? '$' : '%';
+    const unit = rt.basis === 'attainment' ? '%' : '$';
+    const tagName = rt.basis === 'value' ? 'Deal value' : rt.basis === 'cumulative' ? 'Cumulative' : 'Attainment';
     return `
     <div class="blk">
       <div class="blk-top">
-        <span class="tag${rt.basis === 'attainment' ? ' grey' : ''}">${rt.basis === 'value' ? 'Deal value' : 'Attainment'}</span>
+        <span class="tag${rt.basis === 'attainment' ? ' grey' : ''}">${tagName}</span>
         <input class="name" type="text" data-path="${b}.name" value="${esc(rt.name)}" aria-label="Rate table name">
         <select class="bare" style="max-width:250px;flex:0 1 250px" data-path="${b}.mode" data-rerender="rt">
           ${Object.keys(MODE_LABELS[rt.basis]).map(k =>
@@ -1041,6 +1259,19 @@ function renderRateTables() {
         <button class="iconbtn" data-action="del-rt" data-i="${i}" title="Remove rate table">&times;</button>
       </div>
       <p class="sec-note" style="margin:-6px 0 12px;font-size:12.5px">${esc(MODE_BLURB[rt.basis + '.' + rt.mode] || '')}</p>
+      ${rt.basis === 'cumulative' ? `
+      <div class="fields" style="margin-bottom:14px">
+        <div class="f">
+          <label>Accumulate separately by <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+          <select class="bare" data-path="${b}.poolBy">${fieldOptions(rt.poolBy)}</select>
+          <p class="hint">Blank = one balance for everything.</p>
+        </div>
+        <div class="f">
+          <label>Opening balance</label>
+          <div class="ipt"><span class="pre">$</span><input type="number" step="any" data-path="${b}.openingBalance" data-type="number" value="${rt.openingBalance || 0}"></div>
+          <p class="hint">Credit carried in from a prior period.</p>
+        </div>
+      </div>` : ''}
       <div class="tbl-scroll">
         <table class="mini">
           <thead><tr><th class="n">${esc(h.from)}</th><th class="n">${esc(h.to)}</th><th class="n">${esc(h.rate)}</th><th class="x"></th></tr></thead>
@@ -1126,7 +1357,7 @@ function renderRules() {
           ${a.type === 'rateTable' ? `
           <div class="f">
             <label>Rate table</label>
-            <select class="bare" data-path="${b}.action.rateTableId">${rtOptions(a.rateTableId, 'value')}</select>
+            <select class="bare" data-path="${b}.action.rateTableId">${rtOptions(a.rateTableId, ['value', 'cumulative'])}</select>
           </div>` : ''}
           ${a.type === 'percent' ? `
           <div class="f">
@@ -1295,6 +1526,44 @@ function renderOutputs() {
     ww.hidden = false; ww.textContent = '⚠ Weights total ' + pct(tw, 2) + ' — should be 100%.';
   } else ww.hidden = true;
 
+  /* cumulative pools */
+  $('#sec-pools').classList.toggle('hidden', !r.pools.length);
+  if (r.pools.length) {
+    $('#pool-list').innerHTML = r.pools.map(pool => {
+      const nm = esc(pool.rt.name) + (pool.poolByValue ? ' <span class="chip">' + esc(pool.poolByValue) + '</span>' : '');
+      return `
+      <div class="blk">
+        <div class="blk-top">
+          <span class="tag">${esc(MODE_LABELS.cumulative[pool.rt.mode] ? pool.rt.mode === 'retro' ? 'Retro' : pool.rt.mode === 'wholeDeal' ? 'Whole deal' : 'Marginal' : 'Marginal')}</span>
+          <strong style="font-size:15px">${nm}</strong>
+          <span style="margin-left:auto;font-family:var(--mono);font-size:13px;color:var(--blue-3)">${money(pool.commission)}</span>
+        </div>
+        <div class="fields" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+          ${pool.opening ? `<div class="f"><label>Opening balance</label><div style="font-family:var(--mono);font-size:15px">${money0(pool.opening)}</div></div>` : ''}
+          <div class="f"><label>Volume credited</label><div style="font-family:var(--mono);font-size:15px">${money0(pool.volume)}</div></div>
+          <div class="f"><label>Ending balance</label><div style="font-family:var(--mono);font-size:15px">${money0(pool.balance)}</div></div>
+          <div class="f"><label>Final band</label><div style="font-family:var(--mono);font-size:15px;color:var(--blue)">${esc(pool.finalTier)}</div></div>
+          <div class="f"><label>Deals accrued</label><div style="font-family:var(--mono);font-size:15px">${pool.items.length}</div></div>
+        </div>
+        <div class="inner">
+          <div class="ttl">Band breakdown</div>
+          <div class="tbl-scroll">
+            <table>
+              <thead><tr><th>Band</th><th class="n">Volume</th><th class="n">Rate</th><th class="n">Commission</th></tr></thead>
+              <tbody>
+                ${pool.bands.map(bd => `<tr><td>${esc(bd.label)}</td><td class="n">${money0(bd.volume)}</td><td class="n">${bd.rate}%</td><td class="n">${money(bd.commission)}</td></tr>`).join('')}
+                <tr><td colspan="3"><strong>Pool total</strong></td><td class="n"><strong>${money(pool.commission)}</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          ${pool.retro ? `<div class="callout" style="margin-top:12px"><span>ⓘ</span><div><b>Retroactive true-up.</b>
+            Ending balance reached ${esc(pool.retro.tier)}, so all ${money0(pool.volume)} of volume was re-rated at ${pool.retro.rate}%.
+            Paid as-accrued, the same deals would have earned ${money(pool.retro.asAccrued)} — a true-up of ${money(pool.commission - pool.retro.asAccrued)}.</div></div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
   /* statement */
   let html = '<thead><tr><th>Line</th><th class="n">Deals</th><th class="n">Measure</th><th class="n">Rate</th><th class="n">Amount</th></tr></thead><tbody>';
   if (r.dealCount) {
@@ -1302,11 +1571,17 @@ function renderOutputs() {
     r.byRule.forEach((s, i) => {
       if (!s.count) return;
       const rule = r.rules[i], a = rule.action || {};
+      const rtRef = (PLAN.rateTables || []).find(x => x.id === a.rateTableId);
+      const pool = rtRef && rtRef.basis === 'cumulative' ? r.pools.find(pl => pl.rt.id === rtRef.id) : null;
       const rate = a.type === 'percent' ? num(a.percent) + '%'
                  : a.type === 'fixed' ? money0(num(a.amount))
                  : a.type === 'exclude' ? '—'
+                 : pool ? pool.finalTier
                  : 'table';
-      html += `<tr><td><strong>${esc(s.name)}</strong><div class="s2">${esc(ACTIONS[a.type] || '')}</div></td>
+      const sub = pool
+        ? 'Cumulative · ' + esc(rtRef.name) + ' · balance ' + money0(pool.balance)
+        : esc(ACTIONS[a.type] || '');
+      html += `<tr><td><strong>${esc(s.name)}</strong><div class="s2">${sub}</div></td>
                <td class="n">${s.count}</td><td class="n">${money0(s.measure)}</td><td class="n">${rate}</td><td class="n">${money(s.commission)}</td></tr>`;
     });
     if (r.unmatched) html += `<tr><td style="color:var(--red)">Unmatched deals</td><td class="n">${r.unmatched}</td><td class="n">—</td><td class="n">—</td><td class="n">$0.00</td></tr>`;
@@ -1371,14 +1646,36 @@ function renderSchemaRef() {
   <textarea class="json" spellcheck="false" readonly style="min-height:340px">${esc(
 `rateTable = {
   id, name,
-  basis: "value" | "attainment",
-  mode:  "marginal" | "cliff" | "flat",
-  tiers: [ { from, to, rate } ]      // to: null = infinity
+  basis: "value" | "cumulative" | "attainment",
+  mode:  value      -> "marginal" | "cliff" | "flat"
+         cumulative -> "marginal" | "retro" | "wholeDeal"
+         attainment -> "marginal" | "cliff" | "flat"
+  tiers: [ { from, to, rate } ],     // to: null = infinity; bands are [from, to)
+  poolBy, openingBalance             // cumulative only
 }
-  value.marginal  -> commission = SUM( dollars of deal in band x rate% )
+  ONE DEAL AT A TIME  (basis "value")
+  value.marginal  -> commission = SUM( dollars of the deal in band x rate% )
   value.cliff     -> commission = deal value x rate% of the band it lands in
   value.flat      -> commission = flat dollar amount of the band it lands in
-  attainment.*    -> same three shapes, on percent-of-quota, returning payout %
+
+  RUNNING BALANCE ACROSS THE PERIOD  (basis "cumulative")
+  Deals accrue credited measure into a balance; the band depends on that
+  balance, so plan.accrual decides the sequence. poolBy keeps a separate
+  balance per value of that column; openingBalance carries credit in.
+  cumulative.marginal   -> each dollar of the balance earns its band's rate;
+                           a deal straddling a break is split across bands
+  cumulative.retro      -> the band reached at period end re-rates ALL of the
+                           period's volume (true-up); openingBalance sets the
+                           band but is not re-paid
+  cumulative.wholeDeal  -> each deal pays entirely at the band the balance sat
+                           in BEFORE it was credited; no splitting, no re-rating
+
+  PERCENT OF QUOTA  (basis "attainment")
+  attainment.*    -> same three shapes as value, returning a payout %
+
+plan.accrual = { sortField, direction: "asc" | "desc" }
+  Order deals are credited in. Blank sortField = file order. Numeric columns
+  compare numerically, everything else as text (ISO dates sort correctly).
 
 rule = {
   id, name, enabled,
@@ -1413,13 +1710,18 @@ modifier = {
 
 ORDER OF OPERATIONS
   1. days on plan / days in period -> proration factor
-  2. each deal row -> first matching rule -> action -> x credit%
-  3. deal commission subtotal
-  4. quota components: target x weight, actual / prorated quota -> attainment,
+  2. match every deal row to the first rule that accepts it
+  3. sort by plan.accrual, then credit each row:
+       per-deal actions  -> commission x credit%
+       cumulative tables -> credited measure = measure x credit%, accrued into
+                            the pool balance; band(s) determined by the balance
+     then re-rate any "retro" pool at its final band
+  4. deal commission subtotal
+  5. quota components: target x weight, actual / prorated quota -> attainment,
      threshold, attainment rate table, cap -> dollars
-  5. quota commission subtotal
-  6. modifiers, in array order, against their scope
-  7. total variable earnings`)}</textarea>`;
+  6. quota commission subtotal
+  7. modifiers, in array order, against their scope
+  8. total variable earnings`)}</textarea>`;
 }
 
 function renderAll() {
@@ -1463,11 +1765,16 @@ document.addEventListener('click', e => {
 
   if (b.dataset.addRt) {
     const basis = b.dataset.addRt;
-    PLAN.rateTables.push({
-      id: uid('rt'), name: basis === 'value' ? 'New deal-value table' : 'New attainment table',
-      basis, mode: 'marginal',
-      tiers: basis === 'value' ? [{ from: 0, to: null, rate: 3 }] : [{ from: 0, to: null, rate: 1 }]
-    });
+    const seed = {
+      value:      { name: 'New deal-value table', tiers: [{ from: 0, to: null, rate: 3 }] },
+      attainment: { name: 'New attainment table', tiers: [{ from: 0, to: null, rate: 1 }] },
+      cumulative: { name: 'New cumulative table',
+                    tiers: [{ from: 0, to: 15000, rate: 2 }, { from: 15000, to: 30000, rate: 4 },
+                            { from: 30000, to: null, rate: 6 }] }
+    }[basis];
+    PLAN.rateTables.push(Object.assign(
+      { id: uid('rt'), basis, mode: 'marginal' },
+      basis === 'cumulative' ? { poolBy: '', openingBalance: 0 } : {}, seed));
     renderRateTables(); renderRules(); renderComponents(); renderOutputs();
     return;
   }

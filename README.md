@@ -2,7 +2,8 @@
 
 A single-file, rule-driven commission calculator with a full audit trail.
 Upload deal-level data, define the rules that route each deal to its own rate
-table, and get a payout where every figure is traceable. No build step, no
+table — per deal or against a running period balance — and get a payout where
+every figure is traceable. No build step, no
 dependencies — drop `index.html` on Netlify and it runs.
 
 ## Files
@@ -56,7 +57,7 @@ Load by drag-and-drop, file picker, or pasting CSV text.
 
 ```jsonc
 {
-  "version": 2,
+  "version": 3,
   "meta":  { "planName": "...", "periodStart": "2026-01-01", "periodEnd": "2026-12-31" },
   "payee": {
     "name": "...", "id": "...",
@@ -64,6 +65,7 @@ Load by drag-and-drop, file picker, or pasting CSV text.
     "prorate": true,
     "targetIncentive": 40000          // variable at target; drives quota components only
   },
+  "accrual":   { "sortField": "Close Date", "direction": "asc" },
   "rateTables": [ ... ],
   "rules":      [ ... ],
   "components": [ ... ],
@@ -77,21 +79,69 @@ Load by drag-and-drop, file picker, or pasting CSV text.
 {
   "id": "rt-succession",
   "name": "Succession — deal value",
-  "basis": "value",          // "value" (per deal) | "attainment" (percent of quota)
-  "mode":  "marginal",       // "marginal" | "cliff" | "flat"
+  "basis": "value",          // "value" | "cumulative" | "attainment"
+  "mode":  "marginal",
   "tiers": [ { "from": 0, "to": 250000, "rate": 4 },
-             { "from": 250000, "to": null, "rate": 5 } ]   // to: null = infinity
+             { "from": 250000, "to": null, "rate": 5 } ],  // to: null = infinity
+  "poolBy": "", "openingBalance": 0                        // cumulative only
 }
 ```
 
-| basis | mode | Result |
-|---|---|---|
-| `value` | `marginal` | `Σ (dollars of the deal inside a band × rate%)` |
-| `value` | `cliff` | `deal value × rate%` of the band it lands in |
-| `value` | `flat` | flat dollar amount of the band it lands in |
-| `attainment` | `marginal` | `Σ (attainment points in tier × rate)` → payout % |
-| `attainment` | `cliff` | `attainment × multiplier` of the tier it lands in → payout % |
-| `attainment` | `flat` | fixed share of target for that tier → payout % |
+Bands are half-open — `[from, to)` — so a value landing exactly on a break belongs
+to the upper band.
+
+**`basis: "value"` — one deal at a time.** The band is set by that deal's own size.
+
+| mode | Result |
+|---|---|
+| `marginal` | `Σ (dollars of the deal inside a band × rate%)` |
+| `cliff` | `deal value × rate%` of the band it lands in |
+| `flat` | flat dollar amount of the band it lands in |
+
+**`basis: "cumulative"` — a running balance across the period.** Each deal accrues
+its *credited* measure into a pool; the band depends on the balance standing at that
+moment, so `plan.accrual` decides the sequence.
+
+| mode | Result |
+|---|---|
+| `marginal` | each dollar of the balance earns its band's rate; a deal straddling a break is split across bands |
+| `retro` | the band reached at period end re-rates **all** of the period's volume (a true-up) |
+| `wholeDeal` | each deal pays entirely at the band the balance sat in *before* it was credited |
+
+`poolBy` keeps a separate balance per value of that column (per product line, per
+territory). `openingBalance` carries credit in from a prior period — it sets the
+starting band, and under `retro` it is not re-paid.
+
+Worked example — three $20,000 deals against $15,000 bands at 2 / 4 / 6 / 8%:
+
+| | deal 1 | deal 2 | deal 3 | total |
+|---|---|---|---|---|
+| `marginal` | $500 | $1,000 | $1,500 | **$3,000** |
+| `retro` | $1,600 | $1,600 | $1,600 | **$4,800** |
+| `wholeDeal` | $400 | $800 | $1,200 | **$2,400** |
+
+Under `marginal` the total is order-independent within a pool, but the
+per-deal attribution is not. Under `wholeDeal` and `retro` the order changes
+the total too.
+
+**`basis: "attainment"` — percent of quota.** Used by quota components.
+
+| mode | Result |
+|---|---|
+| `marginal` | `Σ (attainment points in tier × rate)` → payout % |
+| `cliff` | `attainment × multiplier` of the tier it lands in → payout % |
+| `flat` | fixed share of target for that tier → payout % |
+
+### `accrual`
+
+```jsonc
+"accrual": { "sortField": "Close Date", "direction": "asc" }
+```
+
+The order deals are credited in. Only cumulative tables depend on it, but it is
+applied consistently so the audit is reproducible. A blank `sortField` keeps file
+order. Numeric columns compare numerically; everything else compares as text, which
+sorts ISO dates correctly.
 
 ### `rule`
 
@@ -148,19 +198,32 @@ String comparisons are case-insensitive; numeric ones parse currency strings.
 ## Order of operations
 
 1. Days on plan ÷ days in period → proration factor
-2. Each deal row → first matching rule → action → × credit %
-3. Deal commission subtotal
-4. Quota components: target × weight; actual ÷ prorated quota → attainment;
+2. Match every deal row to the first rule that accepts it
+3. Sort by `accrual`, then credit each row:
+   - per-deal actions → commission × credit %
+   - cumulative tables → credited measure = measure × credit %, accrued into the
+     pool balance; the band(s) follow from that balance
+   - then re-rate any `retro` pool at its final band
+4. Deal commission subtotal
+5. Quota components: target × weight; actual ÷ prorated quota → attainment;
    threshold → attainment rate table → cap → dollars
-5. Quota commission subtotal
-6. Modifiers, in array order, against their scope
-7. Total variable earnings
+6. Quota commission subtotal
+7. Modifiers, in array order, against their scope
+8. Total variable earnings
 
 Deal commission is **never prorated** — it is earned per deal. Proration
 affects the target incentive and quotas only.
 
+Note the two places credit % applies differently: on a per-deal rule the band comes
+from the full deal size and the split is applied to the payout; on a cumulative
+table the split reduces the volume that accrues, because the credited amount *is*
+the thing being banded.
+
 ## Outputs
 
+- **Cumulative pools** — each running balance: volume credited, ending balance,
+  final band reached, and the band-by-band breakdown of what it paid. Retro pools
+  also show what as-accrued would have paid and the size of the true-up
 - **Commission statement** — one line per rule and per component, then modifiers
 - **Audit trail** — numbered steps with the formula and values behind each figure;
   "Copy audit" exports it as Markdown
@@ -171,23 +234,32 @@ The engine warns on: unmatched deals, component weights ≠ 100%, rate tables
 referenced but missing, columns referenced but absent from the uploaded data,
 and production without a quota.
 
+`calculate()` also returns `pools[]` (each with `volume`, `balance`, `finalTier`,
+`bands[]` and, for retro, `retro.asAccrued`) and `accrualOrder` — the row indices
+in the order they were credited.
+
 ## Testing
 
 ```
 node test-engine.js
 ```
 
-89 assertions: CSV parsing (quoted commas, escaped quotes, currency, duplicate
-headers), hand-computed per-deal payouts for all three rate-table shapes, credit
-splits, exclusions, rule ordering and enablement, all twelve condition
-operators, `all` vs `any` matching, modifier scoping, proration, thresholds and
-caps, missing-column detection, and audit-trail integrity.
+148 assertions: CSV parsing (quoted commas, escaped quotes, currency, duplicate
+headers); hand-computed payouts for all three per-deal shapes and all three
+cumulative shapes; the three-deal worked example above; accrual ordering
+(ascending, descending, numeric columns, file order) and its effect on both
+attribution and totals; pool scoping via `poolBy`; opening balances; credit
+splits reducing accrued volume; band-boundary behaviour; rule ordering and
+enablement; all twelve condition operators; `all` vs `any`; modifier scoping;
+proration; thresholds and caps; missing-column detection; and audit-trail
+integrity.
 
 ## Roadmap
 
 - [x] Site shell and design system
 - [x] Deal-level CSV upload with column detection
-- [x] Reusable rate tables (deal-value and attainment bases, three shapes each)
+- [x] Reusable rate tables (deal-value, cumulative and attainment bases, three shapes each)
+- [x] Period-cumulative tiering — running balances, pool scoping, carry-in, retro true-up
 - [x] Custom rule builder — conditions, first-match-wins ordering, four action types
 - [x] Quota components fed by deal data
 - [x] Audit trail and line-level deal detail
