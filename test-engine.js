@@ -339,5 +339,157 @@ check('audit names each cumulative band',
 check('pool total appears in the audit',
   steps.some(s => s.label.includes('pool total') && near(s.value, 3480)), true);
 
+/* ---- 17. date-aware comparisons -------------------------------------- */
+console.log('\n17. Date-aware comparisons');
+const aug = { d: '2026-08-12', us: '8/12/2026', n: '250000' };
+const td = (op, field, value) => testCondition(aug, { field, op, value });
+check('ISO date lt a later date', td('lt', 'd', '2026-09-01'), true);
+check('ISO date gt an earlier date', td('gt', 'd', '2026-07-31'), true);
+check('August is NOT >= 2026-09-01', td('gte', 'd', '2026-09-01'), false);
+check('August IS <= 2026-08-31', td('lte', 'd', '2026-08-31'), true);
+check('date between month bounds', td('between', 'd', '2026-08-01, 2026-08-31'), true);
+check('date outside month bounds', td('between', 'd', '2026-09-01, 2026-09-30'), false);
+check('US-style M/D/YYYY compares too', td('lt', 'us', '9/1/2026'), true);
+check('numbers still compare as numbers', td('gt', 'n', '200000'), true);
+check('date vs non-date falls back to numeric',
+  testCondition({ d: '2026-08-12' }, { field: 'd', op: 'gt', value: 'abc' }), true);
+
+p = defaultPlan();
+p.rules[0].conditions = [{ field: 'Close Date', op: 'gt', value: '2026-08-31' }];
+r = calculate(p, sample());
+check('date filter selects exactly the post-August deals (incl. Sep 1)', r.byRule[0].count, 5);
+p.rules[0].conditions = [{ field: 'Close Date', op: 'between', value: '2026-08-01, 2026-08-31' }];
+r = calculate(p, sample());
+check('no sample deal closed in August', r.byRule[0].count, 0);
+
+/* ---- 18. credit uplift ------------------------------------------------ */
+console.log('\n18. Credit uplift');
+const upRows = csvToData('Seq,Type,ACV,Credit %,Mult\n1,A,20000,100,\n2,A,20000,50,2', 'up.csv');
+p = cumPlan('marginal'); p.rules[0].action.uplift = 1.15;
+r = calculate(p, upRows);
+check('uplift scales what accrues', r.pools[0].items[0].credited, 23000);
+check('uplift shows in the audit note', r.detail[0].note.includes('1.15 uplift'), true);
+check('uplift then credit % on the same row', r.pools[0].items[1].credited, 20000 * 1.15 * 0.5);
+
+p = cumPlan('marginal'); p.rules[0].action.upliftField = 'Mult';
+r = calculate(p, upRows);
+check('blank uplift cell counts as 1', r.pools[0].items[0].credited, 20000);
+check('uplift column applies', r.pools[0].items[1].credited, 20000 * 2 * 0.5);
+p.rules[0].action.uplift = 1.5;
+r = calculate(p, upRows);
+check('constant and column multiply together', r.pools[0].items[1].credited, 20000 * 1.5 * 2 * 0.5);
+
+p = defaultPlan();
+p.rules[0].action.uplift = 2;                       // Succession deals doubled
+r = calculate(p, sample());
+check('uplift on a per-deal marginal table rebands the deal',
+  byId(r)['D-1004'].commission, 250000 * 0.04 + 230000 * 0.05);
+p = defaultPlan(); p.rules[3].action = { type: 'percent', measureField: 'Deal Value', percent: 10, uplift: 0.5, creditPctField: '' };
+r = calculate(p, sample());
+check('uplift works on a percent action', byId(r)['D-1008'].commission, 20000 * 0.5 * 0.10);
+
+/* ---- 19. clawback ---------------------------------------------------- */
+console.log('\n19. Clawback');
+const cbRows = csvToData('Seq,Type,ACV,Credit %,Paid Rate\n1,Deal,100000,100,\n2,CB,40000,100,10', 'cb.csv');
+function cbPlan(extra) {
+  const q = cumPlan('marginal', { opening: 650000 });
+  q.rateTables[0].tiers = [{ from: 0, to: 1000000, rate: 10 }, { from: 1000000, to: null, rate: 15 }];
+  q.rules = [
+    { id: 'cb', name: 'Clawback', enabled: true, match: 'all',
+      conditions: [{ field: 'Type', op: 'is', value: 'CB' }],
+      action: Object.assign({ type: 'clawback', measureField: 'ACV', clawbackRateField: 'Paid Rate',
+                              clawbackRate: 0, creditPctField: 'Credit %' }, extra || {}) },
+    { id: 'd', name: 'Deals', enabled: true, match: 'all', conditions: [],
+      action: { type: 'rateTable', measureField: 'ACV', rateTableId: 'rt', creditPctField: 'Credit %' } }];
+  return q;
+}
+r = calculate(cbPlan(), cbRows);
+check('clawback is negative', r.detail[1].commission, -4000);
+check('at the rate from the column, not the current band', r.detail[1].note.includes('@ 10%'), true);
+check('deal side still pays normally', r.detail[0].commission, 10000);
+check('net of clawback', r.dealGross, 6000);
+check('balance untouched by default', r.pools[0].balance, 750000);
+check('flagged as a clawback row', r.detail[1].clawback, true);
+
+r = calculate(cbPlan({ clawbackRateField: '', clawbackRate: 15 }), cbRows);
+check('constant rate when no column', r.detail[1].commission, -6000);
+
+r = calculate(cbPlan({ reducesBalance: true, rateTableId: 'rt' }), cbRows);
+check('reducesBalance restates YTD', r.pools[0].balance, 710000);
+check('reduction recorded', r.pools[0].reductions, 40000);
+check('commission still from the paid rate', r.detail[1].commission, -4000);
+
+r = calculate(cbPlan({ clawbackRateField: '', clawbackRate: 0 }), cbRows);
+check('warns when no clawback rate is set',
+  r.warnings.some(w => w.includes('no rate set')), true);
+
+const cbSplit = csvToData('Seq,Type,ACV,Credit %,Paid Rate\n1,CB,40000,50,10', 'cbs.csv');
+r = calculate(cbPlan(), cbSplit);
+check('credit % applies to a clawback too', r.detail[0].commission, -2000);
+const cbNeg = csvToData('Seq,Type,ACV,Credit %,Paid Rate\n1,CB,-40000,100,10', 'cbn.csv');
+r = calculate(cbPlan(), cbNeg);
+check('a negative amount reverses the same way', r.detail[0].commission, -4000);
+
+const negDeal = csvToData('Seq,Type,ACV,Credit %\n1,Deal,-40000,100', 'nd.csv');
+r = calculate(cumPlan('marginal'), negDeal);
+check('a negative row on a normal rule warns instead of silently paying 0',
+  r.warnings.some(w => w.includes('negative amount')), true);
+
+/* ---- 20. end-to-end regression: the screening exercise ---------------- */
+console.log('\n20. End-to-end — FY26 AE plan, August close');
+const exCsv = `Opp ID,Deal Type,Term Months,Software ARR,Close Date,Credit %,Paid Rate
+OPP-10412,New Business,24,180000,2026-08-12,100,
+OPP-10419,Expansion,12,95000,2026-08-18,100,
+OPP-10423,New Business,12,120000,2026-08-05,100,
+OPP-10430,Renewal,12,150000,2026-08-22,100,
+OPP-10437,Renewal,24,200000,2026-08-09,100,
+OPP-10441,New Business,12,160000,2026-08-14,60,
+OPP-10455,New Business,12,140000,2026-09-03,100,
+OPP-09981,Clawback,12,40000,2026-08-21,100,10`;
+const bandAct = o => Object.assign({ type: 'rateTable', measureField: 'Software ARR', rateTableId: 'rt-ytd',
+                                     uplift: 1, upliftField: '', creditPctField: 'Credit %' }, o);
+const exPlan = {
+  version: 3, meta: { planName: 'FY26', periodStart: '2026-01-01', periodEnd: '2026-12-31' },
+  payee: { name: 'Jordan Kim', targetIncentive: 0, prorate: false, startDate: '', endDate: '' },
+  accrual: { sortField: 'Close Date', direction: 'asc' },
+  rateTables: [{ id: 'rt-ytd', name: 'FY26 YTD', basis: 'cumulative', mode: 'marginal', poolBy: '',
+                 openingBalance: 650000,
+                 tiers: [{ from: 0, to: 500000, rate: 0 }, { from: 500000, to: 1000000, rate: 10 },
+                         { from: 1000000, to: 1500000, rate: 15 }, { from: 1500000, to: null, rate: 20 }] }],
+  rules: [
+    { id: 'r0', name: 'Clawback', enabled: true, match: 'all',
+      conditions: [{ field: 'Deal Type', op: 'is', value: 'Clawback' }],
+      action: { type: 'clawback', measureField: 'Software ARR', clawbackRateField: 'Paid Rate',
+                clawbackRate: 0, reducesBalance: false, creditPctField: 'Credit %' } },
+    { id: 'r1', name: 'Next period', enabled: true, match: 'all',
+      conditions: [{ field: 'Close Date', op: 'gt', value: '2026-08-31' }],
+      action: { type: 'exclude', measureField: 'Software ARR', creditPctField: '' } },
+    { id: 'r2', name: 'Multi-year New Business', enabled: true, match: 'all',
+      conditions: [{ field: 'Deal Type', op: 'is', value: 'New Business' },
+                   { field: 'Term Months', op: 'gt', value: '24' }], action: bandAct({ uplift: 1.15 }) },
+    { id: 'r3', name: 'Multi-year Renewal', enabled: true, match: 'all',
+      conditions: [{ field: 'Deal Type', op: 'is', value: 'Renewal' },
+                   { field: 'Term Months', op: 'gt', value: '18' }], action: bandAct({ uplift: 1.15 }) },
+    { id: 'r4', name: 'Standard', enabled: true, match: 'all', conditions: [], action: bandAct({}) }],
+  components: [], modifiers: []
+};
+r = calculate(exPlan, csvToData(exCsv, 'ex.csv'));
+const E = {}; r.detail.forEach(x => { E[x.row['Opp ID']] = x; });
+check('24-month New Business is NOT multi-year (needs > 24)', E['OPP-10412'].uplift, 1);
+check('24-month Renewal IS multi-year (needs > 18)', E['OPP-10437'].uplift, 1.15);
+check('multi-year renewal credits 230,000', E['OPP-10437'].measure, 230000);
+check('PS fees excluded by measuring Software ARR', E['OPP-10423'].measure, 120000);
+check('overlay split credits 60%', E['OPP-10441'].measure * E['OPP-10441'].credit / 100, 96000);
+check('September close excluded from August', E['OPP-10455'].excluded, true);
+check('total creditable ARR', r.pools[0].volume, 871000);
+check('YTD balance', r.pools[0].balance, 1521000);
+check('YTD attainment 152.1%', r.pools[0].balance / 1000000 * 100, 152.1);
+check('August gross commission', r.pools[0].commission, 114200);
+check('clawback at the originally paid rate', E['OPP-09981'].commission, -4000);
+check('net August payout', r.dealGross, 110200);
+check('decelerator band stays inert above 50%',
+  r.pools[0].bands.some(b => b.rate === 0), false);
+check('no warnings', r.warnings.length, 0);
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
 process.exit(fail ? 1 : 0);

@@ -506,6 +506,7 @@ const ACTIONS = {
   rateTable: 'Apply a rate table',
   percent:   'Pay a flat percent of the measure',
   fixed:     'Pay a fixed amount per deal',
+  clawback:  'Claw back commission already paid',
   exclude:   'Pay nothing (exclude the deal)'
 };
 
@@ -649,6 +650,26 @@ const pct = (v, d) => v.toLocaleString('en-US',
   { minimumFractionDigits: d == null ? 1 : d, maximumFractionDigits: d == null ? 1 : d }) + '%';
 const mult = v => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + '×';
 
+/* Recognise a date and return a comparable YYYYMMDD integer, else null.
+   Ambiguous slash dates are read US-style (M/D/YYYY). Without this, num()
+   stops at the first dash and every date in a year compares equal. */
+function dateSerial(v) {
+  const s = String(v == null ? '' : v).trim();
+  let m = /^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/.exec(s);
+  if (m) return (+m[1]) * 10000 + (+m[2]) * 100 + (+m[3]);
+  m = /^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/.exec(s);
+  if (m) return (+m[3]) * 10000 + (+m[1]) * 100 + (+m[2]);
+  return null;
+}
+
+/* Put two values on a common numeric scale: dates as serials when BOTH sides
+   are dates, otherwise tolerant numbers. */
+function comparablePair(raw, value) {
+  const a = dateSerial(raw), b = dateSerial(value);
+  if (a != null && b != null) return [a, b];
+  return [num(raw), num(value)];
+}
+
 const MS_DAY = 86400000;
 function parseDate(s) {
   if (!s) return null;
@@ -726,14 +747,18 @@ function testCondition(row, cond) {
     case 'contains':    return lv !== '' && lc.includes(lv);
     case 'notcontains': return lv === '' || !lc.includes(lv);
     case 'oneof':       return v.split(',').map(x => x.trim().toLowerCase()).filter(Boolean).includes(lc);
-    case 'gt':          return num(raw) >  num(v);
-    case 'gte':         return num(raw) >= num(v);
-    case 'lt':          return num(raw) <  num(v);
-    case 'lte':         return num(raw) <= num(v);
+    case 'gt':  { const c = comparablePair(raw, v); return c[0] >  c[1]; }
+    case 'gte': { const c = comparablePair(raw, v); return c[0] >= c[1]; }
+    case 'lt':  { const c = comparablePair(raw, v); return c[0] <  c[1]; }
+    case 'lte': { const c = comparablePair(raw, v); return c[0] <= c[1]; }
     case 'between': {
-      const p = v.split(',').map(x => num(x));
-      const lo = Math.min(p[0] || 0, p[1] || 0), hi = Math.max(p[0] || 0, p[1] || 0);
-      const n = num(raw); return n >= lo && n <= hi;
+      const parts = v.split(',').map(x => x.trim());
+      const dr = dateSerial(raw), d0 = dateSerial(parts[0]), d1 = dateSerial(parts[1]);
+      const useDates = dr != null && d0 != null && d1 != null;
+      const n  = useDates ? dr : num(raw);
+      const p0 = useDates ? d0 : num(parts[0]);
+      const p1 = useDates ? d1 : num(parts[1]);
+      return n >= Math.min(p0, p1) && n <= Math.max(p0, p1);
     }
     case 'blank':       return s === '';
     case 'notblank':    return s !== '';
@@ -819,13 +844,15 @@ function creditToPool(rt, tiers, balance, credited) {
   };
 }
 
-/* Comparator for accrual order: numeric when both sides are numeric, else text. */
+/* Comparator for accrual order: dates first, then numbers, then text. */
 function accrualCompare(a, b) {
+  const da = dateSerial(a), db = dateSerial(b);
+  if (da != null && db != null) return da - db;
   const sa = String(a == null ? '' : a).trim(), sb = String(b == null ? '' : b).trim();
   const na = parseFloat(sa.replace(/[^0-9.\-]/g, '')), nb = parseFloat(sb.replace(/[^0-9.\-]/g, ''));
   const bothNum = /^[-$(]?[\d,.]+\)?$/.test(sa) && /^[-$(]?[\d,.]+\)?$/.test(sb) && isFinite(na) && isFinite(nb);
   if (bothNum) return na - nb;
-  return sa < sb ? -1 : sa > sb ? 1 : 0;      // ISO dates sort correctly as text
+  return sa < sb ? -1 : sa > sb ? 1 : 0;
 }
 
 /* Apply an attainment rate table. Returns { payoutPct, note } */
@@ -946,6 +973,20 @@ function calculate(plan, data) {
   const detail = new Array(rows.length);
   const pools = {}, poolOrder = [];
 
+  function poolFor(rt, row) {
+    const poolByVal = rt.poolBy ? String(row[rt.poolBy] == null ? '' : row[rt.poolBy]).trim() : '';
+    const key = rt.id + '||' + poolByVal;
+    let pool = pools[key];
+    if (!pool) {
+      const opening = num(rt.openingBalance);
+      pool = pools[key] = { key, rt, tiers: sortTiers(rt), poolBy: rt.poolBy || '',
+                            poolByValue: poolByVal, opening, balance: opening,
+                            volume: 0, reductions: 0, items: [], commission: 0 };
+      poolOrder.push(key);
+    }
+    return pool;
+  }
+
   ordered.forEach(m => {
     const { row, i, rule } = m;
     if (!rule) {
@@ -955,44 +996,71 @@ function calculate(plan, data) {
       return;
     }
     const a = rule.action || {};
-    const measure = a.measureField ? num(row[a.measureField]) : 0;
+    const rawMeasure = a.measureField ? num(row[a.measureField]) : 0;
+
+    /* Credit uplift: scales the measure BEFORE it is banded — a multi-year
+       uplift, a strategic-product kicker, a haircut. Constant and column
+       multiply together; a blank cell counts as 1. */
+    const upConst = (a.uplift == null || a.uplift === '') ? 1 : num(a.uplift);
+    const upCellRaw = a.upliftField ? row[a.upliftField] : '';
+    const upCell = (upCellRaw == null || String(upCellRaw).trim() === '') ? 1 : num(upCellRaw);
+    const uplift = upConst * upCell;
+    const measure = rawMeasure * uplift;
+    const upNote = uplift === 1 ? ''
+      : money0(rawMeasure) + ' × ' + uplift + ' uplift → ' + money0(measure) + '  ·  ';
+
     const creditRaw = a.creditPctField ? row[a.creditPctField] : '';
     const credit = (creditRaw == null || String(creditRaw).trim() === '') ? 100 : num(creditRaw);
 
     if (a.type === 'exclude') {
-      detail[i] = { i, row, ruleId: rule.id, ruleName: rule.name, measure,
+      detail[i] = { i, row, ruleId: rule.id, ruleName: rule.name, rawMeasure, uplift, measure,
                     note: 'excluded by rule', credit, commission: 0, excluded: true };
       return;
     }
 
     const rt = rtById[a.rateTableId];
 
-    /* --- cumulative: the deal accrues into a running balance --------- */
-    if (a.type === 'rateTable' && rt && rt.basis === 'cumulative') {
-      const poolByVal = rt.poolBy ? String(row[rt.poolBy] == null ? '' : row[rt.poolBy]).trim() : '';
-      const key = rt.id + '||' + poolByVal;
-      let pool = pools[key];
-      if (!pool) {
-        const opening = num(rt.openingBalance);
-        pool = pools[key] = { key, rt, tiers: sortTiers(rt), poolBy: rt.poolBy || '',
-                              poolByValue: poolByVal, opening, balance: opening,
-                              volume: 0, items: [], commission: 0 };
-        poolOrder.push(key);
+    /* --- clawback: reverse commission already paid -------------------- */
+    if (a.type === 'clawback') {
+      const amount = Math.abs(measure);
+      const rate = a.clawbackRateField ? num(row[a.clawbackRateField]) : num(a.clawbackRate);
+      if (!rate) warnings.push('Clawback rule "' + rule.name + '" has no rate set — it recovers $0. ' +
+        'Set a rate, or point it at a column holding the rate originally paid.');
+      const commission = -(amount * rate / 100) * credit / 100;
+      let note = upNote + 'reverse ' + money0(amount) + ' @ ' + rate + '%' +
+                 (a.clawbackRateField ? ' (rate from "' + a.clawbackRateField + '")' : '');
+      let poolKey;
+      if (a.reducesBalance && rt && rt.basis === 'cumulative') {
+        const pool = poolFor(rt, row);
+        pool.balance -= amount;
+        pool.reductions += amount;
+        poolKey = pool.key;
+        note += '  ·  balance reduced to ' + money0(pool.balance);
       }
+      detail[i] = { i, row, ruleId: rule.id, ruleName: rule.name, rawMeasure, uplift,
+                    measure: -amount, credit, note, commission, clawback: true, poolKey };
+      return;
+    }
+
+    /* --- cumulative: the deal accrues into a running balance ---------- */
+    if (a.type === 'rateTable' && rt && rt.basis === 'cumulative') {
+      const pool = poolFor(rt, row);
       /* Credit % reduces the volume that accrues — a 50% split earns credit for
          half the ACV — rather than being applied to the payout afterwards. */
       const credited = measure * credit / 100;
+      if (credited < 0) warnings.push('Row ' + (i + 1) + ' credits a negative amount to "' + rt.name +
+        '". Cumulative bands cannot pay a negative walk — use a clawback rule instead.');
       const out = creditToPool(rt, pool.tiers, pool.balance, credited);
       pool.items.push({ i, credited, start: pool.balance, end: pool.balance + credited,
                         parts: out.parts, commission: out.commission });
       pool.balance += credited;
       pool.volume  += credited;
-      detail[i] = { i, row, ruleId: rule.id, ruleName: rule.name, measure, credit,
-                    note: out.note, commission: out.commission, poolKey: key };
+      detail[i] = { i, row, ruleId: rule.id, ruleName: rule.name, rawMeasure, uplift, measure, credit,
+                    note: upNote + out.note, commission: out.commission, poolKey: pool.key };
       return;
     }
 
-    /* --- per-deal ---------------------------------------------------- */
+    /* --- per-deal ----------------------------------------------------- */
     let raw = 0, note = '';
     if (a.type === 'percent')    { raw = measure * num(a.percent) / 100; note = num(a.percent) + '% of ' + money0(measure); }
     else if (a.type === 'fixed') { raw = num(a.amount);                  note = money0(num(a.amount)) + ' fixed'; }
@@ -1001,8 +1069,8 @@ function calculate(plan, data) {
       const out = applyValueTable(rt, measure);
       raw = out.amount; note = out.note;
     }
-    detail[i] = { i, row, ruleId: rule.id, ruleName: rule.name, measure, credit,
-                  note, commission: raw * credit / 100 };
+    detail[i] = { i, row, ruleId: rule.id, ruleName: rule.name, rawMeasure, uplift, measure, credit,
+                  note: upNote + note, commission: raw * credit / 100 };
   });
 
   /* pass 3 — retroactive pools re-rate every dollar at the final band */
@@ -1072,7 +1140,11 @@ function calculate(plan, data) {
       step(nm + ' — volume credited',
            pool.items.length + ' deal' + (pool.items.length === 1 ? '' : 's') + ' accrued (credit % applied)',
            pool.volume, money(pool.volume));
-      step(nm + ' — ending balance', money0(pool.opening) + ' + ' + money0(pool.volume) + ' → ' + pool.finalTier,
+      if (pool.reductions) step(nm + ' — balance reduced by clawbacks', 'reversed ARR removed from the balance',
+           pool.reductions, money0(pool.reductions));
+      step(nm + ' — ending balance',
+           money0(pool.opening) + ' + ' + money0(pool.volume) +
+           (pool.reductions ? ' − ' + money0(pool.reductions) : '') + ' → ' + pool.finalTier,
            pool.balance, money0(pool.balance));
       if (pool.retro) {
         step(nm + ' — retroactive re-rate',
@@ -1351,7 +1423,7 @@ function renderRules() {
           </div>
           ${a.type === 'exclude' ? '' : `
           <div class="f">
-            <label>Measure column</label>
+            <label>${a.type === 'clawback' ? 'Column holding the ARR reversed' : 'Measure column'}</label>
             <select class="bare" data-path="${b}.action.measureField">${fieldOptions(a.measureField)}</select>
           </div>`}
           ${a.type === 'rateTable' ? `
@@ -1359,6 +1431,29 @@ function renderRules() {
             <label>Rate table</label>
             <select class="bare" data-path="${b}.action.rateTableId">${rtOptions(a.rateTableId, ['value', 'cumulative'])}</select>
           </div>` : ''}
+          ${a.type === 'clawback' ? `
+          <div class="f">
+            <label>Rate originally paid</label>
+            <div class="ipt"><span class="pre">%</span><input type="number" step="any" data-path="${b}.action.clawbackRate" data-type="number" value="${a.clawbackRate || 0}"></div>
+            <p class="hint">Or take it from a column below.</p>
+          </div>
+          <div class="f">
+            <label>Rate column <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+            <select class="bare" data-path="${b}.action.clawbackRateField">${fieldOptions(a.clawbackRateField)}</select>
+            <p class="hint">Overrides the rate above when set.</p>
+          </div>
+          <div class="f">
+            <label>Also reduce a running balance</label>
+            <select class="bare" data-path="${b}.action.reducesBalance" data-type="bool" data-rerender="rules">
+              <option value="false"${!a.reducesBalance ? ' selected' : ''}>No — reverse the payment only</option>
+              <option value="true"${a.reducesBalance ? ' selected' : ''}>Yes — restate YTD credit too</option>
+            </select>
+          </div>
+          ${a.reducesBalance ? `
+          <div class="f">
+            <label>Balance to reduce</label>
+            <select class="bare" data-path="${b}.action.rateTableId">${rtOptions(a.rateTableId, ['cumulative'])}</select>
+          </div>` : ''}` : ''}
           ${a.type === 'percent' ? `
           <div class="f">
             <label>Rate</label>
@@ -1368,6 +1463,17 @@ function renderRules() {
           <div class="f">
             <label>Amount per deal</label>
             <div class="ipt"><span class="pre">$</span><input type="number" step="any" data-path="${b}.action.amount" data-type="number" value="${a.amount || 0}"></div>
+          </div>` : ''}
+          ${a.type === 'rateTable' || a.type === 'percent' ? `
+          <div class="f">
+            <label>Credit uplift</label>
+            <div class="ipt"><span class="pre">×</span><input type="number" step="any" data-path="${b}.action.uplift" data-type="number" value="${a.uplift == null ? 1 : a.uplift}"></div>
+            <p class="hint">Scales the measure before banding. 1 = none.</p>
+          </div>
+          <div class="f">
+            <label>Uplift column <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+            <select class="bare" data-path="${b}.action.upliftField">${fieldOptions(a.upliftField)}</select>
+            <p class="hint">Multiplies with the value above.</p>
           </div>` : ''}
           ${a.type === 'exclude' ? '' : `
           <div class="f">
@@ -1682,17 +1788,36 @@ rule = {
   match: "all" | "any",
   conditions: [ { field, op, value } ],   // [] = catch-all, matches every deal
   action: {
-    type: "rateTable" | "percent" | "fixed" | "exclude",
+    type: "rateTable" | "percent" | "fixed" | "clawback" | "exclude",
     measureField,        // deal column holding the dollar amount
-    rateTableId,         // when type = rateTable
+    rateTableId,         // when type = rateTable (or the balance a clawback restates)
     percent,             // when type = percent
     amount,              // when type = fixed
-    creditPctField       // optional split column; blank cell = 100
+    uplift,              // multiplier on the measure BEFORE banding; 1 = none
+    upliftField,         // optional column multiplier; multiplies with uplift
+    creditPctField,      // optional split column; blank cell = 100
+    clawbackRate,        // when type = clawback: the rate originally paid, %
+    clawbackRateField,   // optional column holding that rate; overrides the above
+    reducesBalance       // clawback also removes the ARR from a cumulative balance
   }
 }
   ops: is, isnot, contains, notcontains, oneof,
        gt, gte, lt, lte, between ("a, b"), blank, notblank
+  The four comparison ops and between understand DATES: when both sides look
+  like dates (YYYY-MM-DD, or M/D/YYYY) they compare as dates, else as numbers.
   Rules are tested top to bottom; FIRST MATCH WINS.
+
+  UPLIFT models a credit adjustment that changes what is banded, not the rate:
+  a multi-year 1.15x, a strategic-product kicker, a haircut. Put the condition
+  that earns it on the rule, and give that rule the uplift.
+    measure   = column value x uplift x upliftField
+    then      per-deal   -> band the measure, payout x credit%
+              cumulative -> accrue measure x credit% into the balance
+
+  CLAWBACK reverses commission already paid, at the rate it was paid at —
+  not at today's band. commission = -(|measure| x rate%) x credit%.
+  By default the running balance is untouched, because a reversal recovers a
+  payment rather than restating YTD credit; set reducesBalance to do both.
 
 component = {                          // optional quota-based earnings
   id, name, weight,                    // weight = % share of payee.targetIncentive
@@ -1712,9 +1837,11 @@ ORDER OF OPERATIONS
   1. days on plan / days in period -> proration factor
   2. match every deal row to the first rule that accepts it
   3. sort by plan.accrual, then credit each row:
+       measure = column x uplift  (uplift applies before any banding)
        per-deal actions  -> commission x credit%
        cumulative tables -> credited measure = measure x credit%, accrued into
                             the pool balance; band(s) determined by the balance
+       clawback          -> negative commission at the rate originally paid
      then re-rate any "retro" pool at its final band
   4. deal commission subtotal
   5. quota components: target x weight, actual / prorated quota -> attainment,
@@ -1821,6 +1948,36 @@ function loadCSVText(text, name) {
   renderData(); renderRules(); renderComponents(); renderOutputs();
   toast(d.rows.length + ' rows loaded');
 }
+
+$('#btn-add-rule').addEventListener('click', () => {
+  const firstValueTable = (PLAN.rateTables || []).find(rt => rt.basis !== 'attainment');
+  PLAN.rules.push({
+    id: uid('r'), name: 'New rule', enabled: true, match: 'all',
+    conditions: DATA.columns.length ? [{ field: DATA.columns[0], op: 'is', value: '' }] : [],
+    action: { type: 'rateTable', measureField: '', rateTableId: firstValueTable ? firstValueTable.id : '',
+              percent: 0, amount: 0, uplift: 1, upliftField: '', creditPctField: '',
+              clawbackRate: 0, clawbackRateField: '', reducesBalance: false }
+  });
+  renderRules(); renderOutputs();
+});
+
+$('#btn-add-comp').addEventListener('click', () => {
+  const attTable = (PLAN.rateTables || []).find(rt => rt.basis === 'attainment');
+  PLAN.components.push({
+    id: uid('c'), name: 'New component', weight: 0, quota: 0,
+    actualSource: 'manual', actualField: '', actual: 0, prorateQuota: true,
+    payout: { rateTableId: attTable ? attTable.id : '', thresholdPct: 0, capPct: null }
+  });
+  renderComponents(); renderOutputs();
+});
+
+$('#btn-add-mod').addEventListener('click', () => {
+  PLAN.modifiers.push({
+    id: uid('m'), name: 'New modifier', appliesTo: 'all', selected: 0,
+    options: [{ label: 'Full', factor: 1 }, { label: 'Half', factor: 0.5 }]
+  });
+  renderModifiers(); renderOutputs();
+});
 
 $('#btn-pick').addEventListener('click', () => $('#file-input').click());
 $('#file-input').addEventListener('change', e => {

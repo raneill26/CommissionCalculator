@@ -151,12 +151,17 @@ sorts ISO dates correctly.
   "match": "all",                                    // "all" | "any"
   "conditions": [ { "field": "Deal Type", "op": "is", "value": "Succession" } ],
   "action": {
-    "type": "rateTable",          // "rateTable" | "percent" | "fixed" | "exclude"
+    "type": "rateTable",          // "rateTable" | "percent" | "fixed" | "clawback" | "exclude"
     "measureField": "Deal Value", // deal column holding the dollar amount
     "rateTableId": "rt-succession",
     "percent": 0,                 // when type = percent
     "amount": 0,                  // when type = fixed
-    "creditPctField": "Credit %"  // optional split column; blank cell = 100
+    "uplift": 1,                  // multiplier on the measure BEFORE banding
+    "upliftField": "",            // optional column multiplier; multiplies with uplift
+    "creditPctField": "Credit %", // optional split column; blank cell = 100
+    "clawbackRate": 0,            // when type = clawback: the rate originally paid
+    "clawbackRateField": "",      // optional column holding that rate; overrides above
+    "reducesBalance": false       // clawback also removes the ARR from a balance
   }
 }
 ```
@@ -168,6 +173,52 @@ unmatched deals pay nothing (the engine warns when that happens).
 Operators: `is`, `isnot`, `contains`, `notcontains`, `oneof` (comma-separated),
 `gt`, `gte`, `lt`, `lte`, `between` (`"a, b"`), `blank`, `notblank`.
 String comparisons are case-insensitive; numeric ones parse currency strings.
+
+**The comparison operators understand dates.** When both sides look like dates —
+`YYYY-MM-DD`, or `M/D/YYYY` read US-style — they compare as dates; otherwise as
+numbers. So `Close Date gt 2026-08-31` cleanly separates fiscal months. (Before
+this, `2026-08-12` parsed as the number `2026` and every date in a year compared
+equal, which silently misclassified deals.)
+
+### Credit uplift
+
+`uplift` scales the measure **before** it is banded — a multi-year 1.15×, a
+strategic-product kicker, a haircut. It changes what is credited, not the rate
+applied to it, so on a cumulative table it changes what accrues into the balance.
+
+Put the condition that earns the uplift on the rule, and give that rule the
+uplift. With first-match-wins ordering, a multi-year policy reads directly:
+
+```jsonc
+{ "name": "Multi-year Renewal (term > 18)",
+  "conditions": [ { "field": "Deal Type", "op": "is", "value": "Renewal" },
+                  { "field": "Term Months", "op": "gt", "value": "18" } ],
+  "action": { "type": "rateTable", "measureField": "ARR",
+              "rateTableId": "rt-ytd", "uplift": 1.15 } }
+```
+
+`measure = column × uplift × upliftField` — a blank uplift cell counts as 1, and
+the constant and the column multiply together.
+
+### Clawback
+
+`type: "clawback"` reverses commission already paid, **at the rate it was paid
+at** — not at today's band, which is the whole point of a clawback.
+
+```
+commission = -( |measure| × rate% ) × credit%
+```
+
+The rate comes from `clawbackRate`, or from `clawbackRateField` when the row
+carries the original rate (the engine warns if neither is set, rather than
+quietly recovering $0). The measure may be positive or negative; magnitude is
+what counts.
+
+By default a clawback leaves the running balance alone, because recovering a
+payment is not the same as restating year-to-date credit. Set `reducesBalance`
+(with `rateTableId` naming the pool) when the plan does restate — the reversed
+ARR then comes off the balance and shifts the bands for everything credited
+after it.
 
 ### `component` (optional, quota-based)
 
@@ -200,9 +251,11 @@ String comparisons are case-insensitive; numeric ones parse currency strings.
 1. Days on plan ÷ days in period → proration factor
 2. Match every deal row to the first rule that accepts it
 3. Sort by `accrual`, then credit each row:
+   - `measure = column × uplift` — the uplift lands before any banding
    - per-deal actions → commission × credit %
    - cumulative tables → credited measure = measure × credit %, accrued into the
      pool balance; the band(s) follow from that balance
+   - clawbacks → negative commission at the rate originally paid
    - then re-rate any `retro` pool at its final band
 4. Deal commission subtotal
 5. Quota components: target × weight; actual ÷ prorated quota → attainment;
@@ -232,7 +285,8 @@ the thing being banded.
 
 The engine warns on: unmatched deals, component weights ≠ 100%, rate tables
 referenced but missing, columns referenced but absent from the uploaded data,
-and production without a quota.
+production without a quota, a clawback with no rate set, and a negative amount on
+a normal rule (which cumulative bands cannot pay — use a clawback instead).
 
 `calculate()` also returns `pools[]` (each with `volume`, `balance`, `finalTier`,
 `bands[]` and, for retro, `retro.asAccrued`) and `accrualOrder` — the row indices
@@ -244,15 +298,18 @@ in the order they were credited.
 node test-engine.js
 ```
 
-148 assertions: CSV parsing (quoted commas, escaped quotes, currency, duplicate
+195 assertions: CSV parsing (quoted commas, escaped quotes, currency, duplicate
 headers); hand-computed payouts for all three per-deal shapes and all three
-cumulative shapes; the three-deal worked example above; accrual ordering
-(ascending, descending, numeric columns, file order) and its effect on both
-attribution and totals; pool scoping via `poolBy`; opening balances; credit
-splits reducing accrued volume; band-boundary behaviour; rule ordering and
-enablement; all twelve condition operators; `all` vs `any`; modifier scoping;
-proration; thresholds and caps; missing-column detection; and audit-trail
-integrity.
+cumulative shapes; accrual ordering (ascending, descending, numeric, date, file
+order) and its effect on both attribution and totals; pool scoping via `poolBy`;
+opening balances; credit splits; band-boundary behaviour; date-aware comparison
+operators; credit uplift as a constant, a column, and both; clawbacks at a
+constant rate, a column rate, with and without balance restatement; rule ordering
+and enablement; all twelve condition operators; `all` vs `any`; modifier scoping;
+proration; thresholds and caps; missing-column detection; audit-trail integrity;
+and one end-to-end regression of a full monthly close — multi-year uplift,
+fiscal-month cutoff, overlay split, PS exclusion, YTD carry-in across a
+four-band curve, and a clawback.
 
 ## Roadmap
 
@@ -260,6 +317,9 @@ integrity.
 - [x] Deal-level CSV upload with column detection
 - [x] Reusable rate tables (deal-value, cumulative and attainment bases, three shapes each)
 - [x] Period-cumulative tiering — running balances, pool scoping, carry-in, retro true-up
+- [x] Date-aware condition operators (fiscal-month cutoffs)
+- [x] Credit uplift — measure adjustments before banding (multi-year, kickers, haircuts)
+- [x] Clawbacks — reversal at the rate originally paid, optional balance restatement
 - [x] Custom rule builder — conditions, first-match-wins ordering, four action types
 - [x] Quota components fed by deal data
 - [x] Audit trail and line-level deal detail
