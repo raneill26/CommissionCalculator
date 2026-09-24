@@ -41,7 +41,7 @@ const check=(n,a,e)=>{ const ok=a===e; ok?pass++:fail++; console.log((ok?'  PASS
      point of that test, not a page fault */
   p.on('console',c=>{ if(c.type()==='error' && !/Failed to load resource/.test(c.text())) errs.push(c.text()); });
 
-  let mock = { status:200, body:{ mode:'draft', result:DRAFT, usage:{input_tokens:5000,output_tokens:1800}, model:'claude-sonnet-5' } };
+  let mock = { status:200, body:{ mode:'draft', result:DRAFT, usage:{input_tokens:5000,output_tokens:1800}, model:'claude-opus-5-5' } };
   let lastRequest = null;
   await p.route('https://mock.endpoint/**', async route => {
     lastRequest = { headers: route.request().headers(), body: JSON.parse(route.request().postData()||'{}') };
@@ -102,7 +102,7 @@ const check=(n,a,e)=>{ const ok=a===e; ok?pass++:fail++; console.log((ok?'  PASS
   check('discard clears', await p.evaluate(()=>document.querySelector('#agent-out').innerHTML.trim()), '');
 
   console.log('\n6. Verify mode');
-  mock.body = { mode:'verify', result:VERIFY, model:'claude-sonnet-5' };
+  mock.body = { mode:'verify', result:VERIFY, model:'claude-opus-5-5' };
   await p.click('#btn-verify'); await p.waitForTimeout(400);
   check('mode verify', lastRequest.body.mode, 'verify');
   check('plan sent', typeof lastRequest.body.plan, 'object');
@@ -126,7 +126,7 @@ const check=(n,a,e)=>{ const ok=a===e; ok?pass++:fail++; console.log((ok?'  PASS
   await p.route('**/api/draft-plan', async route => {
     sameOriginHit = route.request().url();
     await route.fulfill({ status:200, contentType:'application/json',
-      body: JSON.stringify({ mode:'draft', result:DRAFT, model:'claude-sonnet-5' }) });
+      body: JSON.stringify({ mode:'draft', result:DRAFT, model:'claude-opus-5-5' }) });
   });
   await p.fill('#agent-url','');
   await p.click('#btn-draft'); await p.waitForTimeout(400);

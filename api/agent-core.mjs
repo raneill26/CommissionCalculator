@@ -19,7 +19,7 @@
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const API_VERSION = '2023-06-01';
-const DEFAULT_MODEL = 'claude-sonnet-5';
+const DEFAULT_MODEL = 'claude-opus-5-5';
 
 const MAX_DOCUMENT_CHARS = 60000;
 const MAX_BODY_BYTES = 400000;
@@ -318,17 +318,26 @@ function json(body, status, origin) {
   });
 }
 
+/* Browsers send the origin lowercased and with no trailing slash. Normalise
+   the configured value the same way, so "https://MySite.netlify.app/" typed
+   into a dashboard still matches rather than silently refusing every call. */
+function normOrigin(o) {
+  return String(o == null ? '' : o).trim().toLowerCase().replace(/\/+$/, '');
+}
+
 /* env: { ANTHROPIC_API_KEY, PASSPHRASE?, MODEL?, ALLOWED_ORIGIN? } */
 export async function handle(request, env) {
-  const allowed = env.ALLOWED_ORIGIN || '*';
-  const origin = allowed === '*' ? '*' : allowed;
+  const allowed = normOrigin(env.ALLOWED_ORIGIN) || '*';
+  const origin = allowed;
 
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(origin) });
   if (request.method !== 'POST') return json({ error: 'Use POST.' }, 405, origin);
 
   if (allowed !== '*') {
     const reqOrigin = request.headers.get('origin');
-    if (reqOrigin && reqOrigin !== allowed) return json({ error: 'Origin not allowed.' }, 403, origin);
+    if (reqOrigin && normOrigin(reqOrigin) !== allowed) {
+      return json({ error: 'Origin ' + reqOrigin + ' is not allowed. ALLOWED_ORIGIN is set to ' + allowed + '.' }, 403, origin);
+    }
   }
 
   if (!env.ANTHROPIC_API_KEY) {

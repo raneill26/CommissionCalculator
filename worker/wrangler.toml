@@ -5,7 +5,7 @@ compatibility_date = "2026-09-01"
 # Non-secret settings. Secrets (ANTHROPIC_API_KEY, PASSPHRASE) are set with
 # `npx wrangler secret put NAME` and never live in this file.
 [vars]
-MODEL = "claude-sonnet-5"
+MODEL = "claude-opus-5-5"
 
 # Lock the endpoint to your GitHub Pages origin once you know it, e.g.
 # ALLOWED_ORIGIN = "https://ryanneill.github.io"
