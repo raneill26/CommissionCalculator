@@ -216,7 +216,7 @@ footer .r{margin-left:auto}
         <p class="eyebrow">Rule-driven commission engine</p>
         <h1>Load the deals.<br><em>Show the math.</em></h1>
       </div>
-      <p class="lede">Upload deal-level data, define the rules that route each deal to its own rate table, and get a payout with an audit of every step of the calculation</p>
+      <p class="lede">Upload deal-level data, define the rules that route each deal to its own rate table, and get a payout with every step of the calculation on the record.</p>
     </div>
 
     <div class="result">
@@ -259,7 +259,7 @@ footer .r{margin-left:auto}
       <div class="fields">
         <div class="f">
           <label for="payeeName">Payee</label>
-          <div class="ipt"><input id="payeeName" type="text" data-path="payee.name" placeholder="Walter White"></div>
+          <div class="ipt"><input id="payeeName" type="text" data-path="payee.name" placeholder="Jordan Blake"></div>
         </div>
         <div class="f">
           <label for="payeeId">Employee ID</label>
@@ -268,17 +268,17 @@ footer .r{margin-left:auto}
         <div class="f">
           <label for="targetIncentive">Variable at target</label>
           <div class="ipt"><span class="pre">$</span><input id="targetIncentive" type="number" min="0" step="1000" data-path="payee.targetIncentive" data-type="number"></div>
-          <p class="hint" id="hint-ti">Opportunity for quota-based components</p>
+          <p class="hint" id="hint-ti">Opportunity for quota-based components.</p>
         </div>
         <div class="f">
           <label for="hireDate">On plan from</label>
           <div class="ipt"><input id="hireDate" type="date" data-path="payee.startDate"></div>
-          <p class="hint">Blank = start of period</p>
+          <p class="hint">Blank = start of period.</p>
         </div>
         <div class="f">
           <label for="termDate">On plan through</label>
           <div class="ipt"><input id="termDate" type="date" data-path="payee.endDate"></div>
-          <p class="hint">Blank = end of period</p>
+          <p class="hint">Blank = end of period.</p>
         </div>
         <div class="f">
           <label for="prorate">Prorate for time on plan</label>
@@ -303,7 +303,7 @@ footer .r{margin-left:auto}
           <button class="btn sm" id="btn-clear-data">Clear</button>
         </div>
       </div>
-      <p class="sec-note">Upload a CSV where each row is a deal. The first row must be column headers. The rules below read these column names.</p>
+      <p class="sec-note">Upload a CSV where each row is one deal. The first row must be column headers. Rules below read these column names.</p>
       <input type="file" id="file-input" accept=".csv,.txt,text/csv" class="hidden">
 
       <div id="drop" class="drop">
@@ -349,21 +349,64 @@ footer .r{margin-left:auto}
     </div>
   </section>
 
+  <!-- 03 DRAFT FROM A PLAN DOCUMENT -->
+  <section>
+    <div class="card">
+      <div class="sec-head">
+        <span class="num">03</span><h2>Draft from a plan document</h2>
+        <div class="tools"><button class="btn sm" id="btn-agent-cfg">Endpoint</button></div>
+      </div>
+      <p class="sec-note">Paste the plan mechanics and Claude proposes the rate tables and rules below. Nothing is applied until you review it. The model writes <strong>configuration</strong>, never a payout &mdash; the engine still does every calculation, and the audit trail still shows its work.</p>
+
+      <details class="io" id="agent-cfg">
+        <summary>Endpoint settings</summary>
+        <div class="body">
+          <div class="fields">
+            <div class="f">
+              <label for="agent-url">Endpoint URL <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+              <div class="ipt"><input id="agent-url" type="text" spellcheck="false" placeholder="/api/draft-plan &#8212; this origin"></div>
+              <p class="hint">Blank uses this site's own /api/draft-plan.</p>
+            </div>
+            <div class="f">
+              <label for="agent-pass">Passphrase</label>
+              <div class="ipt"><input id="agent-pass" type="password" placeholder="shared passphrase"></div>
+              <p class="hint">Stored in this browser only.</p>
+            </div>
+          </div>
+          <div class="callout" style="margin-top:14px"><span>&#9432;</span><div><b>Never paste an API key here.</b> This page is static and anyone can read its source. The key belongs in the server environment behind the endpoint &mdash; on Netlify that is Site configuration &rarr; Environment variables.</div></div>
+        </div>
+      </details>
+
+      <div class="f" style="margin-top:18px">
+        <label for="agent-doc">Plan document</label>
+        <textarea id="agent-doc" class="json" spellcheck="false" style="min-height:140px;font-family:var(--sans);font-size:13.5px;color:var(--ink)" placeholder="Paste the plan mechanics &#8212; payout curve, quota, qualifying rules, splits, clawbacks, period cutoffs..."></textarea>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
+        <button class="btn sm blue" id="btn-draft">Draft rate tables &amp; rules</button>
+        <button class="btn sm" id="btn-verify">Verify current plan against it</button>
+        <span id="agent-status" style="font-family:var(--mono);font-size:12.5px;color:var(--muted)"></span>
+      </div>
+
+      <div id="agent-out"></div>
+    </div>
+  </section>
+
   <!-- 03 RATE TABLES -->
   <section>
     <div class="card">
       <div class="sec-head">
-        <span class="num">03</span><h2>Rate tables</h2>
+        <span class="num">04</span><h2>Rate tables</h2>
         <div class="tools">
           <button class="btn sm" data-add-rt="value">+ Deal-value table</button>
           <button class="btn sm" data-add-rt="cumulative">+ Cumulative table</button>
           <button class="btn sm" data-add-rt="attainment">+ Attainment table</button>
         </div>
       </div>
-      <p class="sec-note">Reusable tier tables, referenced by rules and components
-        <strong>Deal-value</strong> tables tier on the size of one deal, in isolation
-        <strong>Cumulative</strong> tables tier on a running balance across the period (Ex: three $20k deals against $15k bands walk from the first band up to the fourth)
-        <strong>Attainment</strong> tables tier on percent-of-quota and are used by quota components</p>
+      <p class="sec-note">Reusable tier tables, referenced by rules and components.
+        <strong>Deal-value</strong> tables tier on the size of one deal, in isolation.
+        <strong>Cumulative</strong> tables tier on a running balance across the period — three $20k deals against $15k bands walk from the first band up to the fourth.
+        <strong>Attainment</strong> tables tier on percent-of-quota and are used by quota components.</p>
       <div id="rt-list"></div>
     </div>
   </section>
@@ -372,10 +415,10 @@ footer .r{margin-left:auto}
   <section>
     <div class="card">
       <div class="sec-head">
-        <span class="num">04</span><h2>Rules</h2>
+        <span class="num">05</span><h2>Rules</h2>
         <div class="tools"><button class="btn sm" id="btn-add-rule">+ Add rule</button></div>
       </div>
-      <p class="sec-note">Each deal is tested against these rules top to bottom and the <strong>first match wins</strong>. A rule with no conditions matches everything, keep one at the bottom as a catch-all. This is the section the LLM agent will write for you from a plan document</p>
+      <p class="sec-note">Each deal is tested against these rules top to bottom and the <strong>first match wins</strong>. A rule with no conditions matches everything — keep one at the bottom as a catch-all. This is the section the agent will write for you from a plan document.</p>
       <div id="rule-list"></div>
       <p class="warn" id="rule-warn" hidden></p>
     </div>
@@ -385,10 +428,10 @@ footer .r{margin-left:auto}
   <section>
     <div class="card">
       <div class="sec-head">
-        <span class="num">05</span><h2>Quota components</h2>
+        <span class="num">06</span><h2>Quota components</h2>
         <div class="tools"><button class="btn sm" id="btn-add-comp">+ Add component</button></div>
       </div>
-      <p class="sec-note">Optional, for plans where part of the variable is earned against a quota rather than per deal. Weights are shares of the variable-at-target amount and should total 100%</p>
+      <p class="sec-note">Optional. For plans where part of the variable is earned against a quota rather than per deal. Weights are shares of the variable-at-target amount and should total 100%.</p>
       <div id="comp-list"></div>
       <p class="warn" id="weight-warn" hidden></p>
     </div>
@@ -398,10 +441,10 @@ footer .r{margin-left:auto}
   <section>
     <div class="card">
       <div class="sec-head">
-        <span class="num">06</span><h2>Modifiers</h2>
+        <span class="num">07</span><h2>Modifiers</h2>
         <div class="tools"><button class="btn sm" id="btn-add-mod">+ Add modifier</button></div>
       </div>
-      <p class="sec-note">Multipliers applied after everything else (quality scores, adherence ratings, manager discretion) Each can target deal commission, quota commission, or both</p>
+      <p class="sec-note">Multipliers applied after everything else — quality scores, adherence ratings, manager discretion. Each can target deal commission, quota commission, or both.</p>
       <div id="mod-list"></div>
     </div>
   </section>
@@ -409,8 +452,8 @@ footer .r{margin-left:auto}
   <!-- 07 CUMULATIVE POOLS -->
   <section id="sec-pools">
     <div class="card">
-      <div class="sec-head"><span class="num">07</span><h2>Cumulative pools</h2></div>
-      <p class="sec-note">Running balances built by the cumulative rate tables, and the band-by-band breakdown of what each one paid</p>
+      <div class="sec-head"><span class="num">08</span><h2>Cumulative pools</h2></div>
+      <p class="sec-note">Running balances built by the cumulative rate tables, and the band-by-band breakdown of what each one paid.</p>
       <div id="pool-list"></div>
     </div>
   </section>
@@ -419,11 +462,11 @@ footer .r{margin-left:auto}
   <section>
     <div class="grid-2">
       <div class="card">
-        <div class="sec-head"><span class="num">08</span><h2>Commission statement</h2></div>
+        <div class="sec-head"><span class="num">09</span><h2>Commission statement</h2></div>
         <div class="tbl-scroll"><table class="stmt" id="stmt"></table></div>
       </div>
       <div class="card">
-        <div class="sec-head"><span class="num">09</span><h2>Audit trail</h2></div>
+        <div class="sec-head"><span class="num">10</span><h2>Audit trail</h2></div>
         <div id="audit"></div>
       </div>
     </div>
@@ -433,10 +476,10 @@ footer .r{margin-left:auto}
   <section id="sec-detail">
     <div class="card">
       <div class="sec-head">
-        <span class="num">10</span><h2>Deal detail</h2>
+        <span class="num">11</span><h2>Deal detail</h2>
         <div class="tools"><button class="btn sm" id="btn-copy-detail">Copy as CSV</button></div>
       </div>
-      <p class="sec-note">Every deal, the rule it matched, and the commission it produced. This is the line-level audit</p>
+      <p class="sec-note">Every deal, the rule it matched, and the commission it produced. This is the line-level audit.</p>
       <div class="tbl-scroll"><table class="data-tbl" id="detail-tbl"></table></div>
     </div>
   </section>
@@ -444,8 +487,8 @@ footer .r{margin-left:auto}
   <!-- 10 PLAN JSON -->
   <section>
     <div class="card">
-      <div class="sec-head"><span class="num">11</span><h2>Plan definition</h2></div>
-      <p class="sec-note">The plan (period, rate tables, rules, components, modifiers) is one JSON object, separate from the deal data. This is the handoff point for the agent layer: it writes this object, the engine executes it</p>
+      <div class="sec-head"><span class="num">12</span><h2>Plan definition</h2></div>
+      <p class="sec-note">The plan — period, rate tables, rules, components, modifiers — is one JSON object, separate from the deal data. This is the handoff point for the agent layer: it writes this object, the engine executes it.</p>
       <details class="io">
         <summary>View / edit plan JSON</summary>
         <div class="body">
@@ -465,7 +508,7 @@ footer .r{margin-left:auto}
   </section>
 
   <footer>
-    <span>Scenario modelling, the signed plan document remains the source of truth</span>
+    <span>Scenario modelling — the signed plan document remains the source of truth.</span>
     <span class="r" id="foot-period"></span>
   </footer>
 </main>
@@ -550,14 +593,14 @@ const MODE_BLURB = {
 function defaultPlan() {
   return {
     version: 3,
-    meta: { planName: 'FY26 AE · August 2026',
+    meta: { planName: 'FY26 AE (Rancher 2) — Commercial · August 2026',
             periodStart: '2026-01-01', periodEnd: '2026-12-31' },
 
     /* OTE $200,000 on a 50/50 mix: base $100,000 / TTV $100,000. Base is out of
        scope here; the TTV is what the curve below pays out at 100% of quota
        ($1,000,000 × 10%). Recorded for reference — with no quota components,
        commission comes entirely from the credited-ARR curve. */
-    payee: { name: 'Gus Fring', id: '308', startDate: '', endDate: '',
+    payee: { name: 'Jordan Kim', id: '4417', startDate: '', endDate: '',
              prorate: false, targetIncentive: 100000 },
 
     /* A deal must be Closed Won by the last day of the fiscal month to count
@@ -909,6 +952,179 @@ function tierLabel(t, unit) {
   const f = num(t.from), to = (t.to == null || t.to === '') ? null : num(t.to);
   const fmt = unit === '$' ? (x => money0(x)) : (x => x + '%');
   return to == null ? fmt(f) + '+' : fmt(f) + '–' + fmt(to);
+}
+
+/* ------------------------- 3b. PLAN VALIDATION -------------------------- */
+/* Pure, and deliberately strict. Anything that reaches the engine has been
+   through here first — whether a human hand-edited the JSON or a model wrote
+   it. The engine assumes a well-formed plan; this is what earns that. */
+
+/* num() is deliberately tolerant for DATA cells — it turns junk into 0 so a
+   stray "n/a" cannot crash a payroll run. Configuration deserves the opposite
+   treatment: a rate of "ten" must be caught, not quietly read as 0%. */
+function numericish(v) {
+  if (typeof v === 'number') return isFinite(v);
+  const s = String(v == null ? '' : v).trim();
+  return s !== '' && /\d/.test(s) && isFinite(num(s));
+}
+
+function validatePlan(plan, data) {
+  const errors = [], warnings = [];
+  const E = m => errors.push(m), W = m => warnings.push(m);
+
+  if (!plan || typeof plan !== 'object') { E('Plan is not an object.'); return { ok: false, errors, warnings }; }
+  if (!plan.meta || typeof plan.meta !== 'object') W('Plan has no meta block; period dates will be empty.');
+  if (!plan.payee || typeof plan.payee !== 'object') W('Plan has no payee block.');
+
+  const cols = (data && data.columns) || [];
+  const known = c => !cols.length || cols.indexOf(c) >= 0;
+  const colNote = c => ' Column "' + c + '" is not in the loaded data.';
+
+  /* --- rate tables --------------------------------------------------- */
+  const tableById = {};
+  const tables = plan.rateTables;
+  if (!Array.isArray(tables)) E('rateTables must be an array.');
+  else tables.forEach((rt, i) => {
+    const at = 'Rate table ' + (rt && rt.name ? '"' + rt.name + '"' : '#' + (i + 1));
+    if (!rt || typeof rt !== 'object') { E(at + ' is not an object.'); return; }
+    if (!rt.id) E(at + ' has no id.');
+    else if (tableById[rt.id]) E('Two rate tables share the id "' + rt.id + '".');
+    else tableById[rt.id] = rt;
+    if (!rt.name) W(at + ' has no name.');
+
+    if (['value', 'cumulative', 'attainment'].indexOf(rt.basis) < 0) {
+      E(at + ' has basis "' + rt.basis + '"; expected value, cumulative or attainment.');
+      return;
+    }
+    if (!MODE_LABELS[rt.basis] || !MODE_LABELS[rt.basis][rt.mode]) {
+      E(at + ' has mode "' + rt.mode + '", which is not valid for a ' + rt.basis + ' table. ' +
+        'Valid: ' + Object.keys(MODE_LABELS[rt.basis]).join(', ') + '.');
+    }
+
+    const tiers = Array.isArray(rt.tiers) ? rt.tiers.slice() : null;
+    if (!tiers) { E(at + ' has no tiers array.'); return; }
+    if (!tiers.length) { E(at + ' has no bands.'); return; }
+
+    tiers.forEach((t, ti) => {
+      if (!numericish(t.from)) E(at + ' band ' + (ti + 1) + ' has a non-numeric "from".');
+      if (!numericish(t.rate)) E(at + ' band ' + (ti + 1) + ' has a non-numeric rate.');
+      if (t.to != null && t.to !== '' && num(t.to) <= num(t.from))
+        E(at + ' band ' + (ti + 1) + ' ends at or before it starts.');
+    });
+
+    const sorted = tiers.slice().sort((a, b) => num(a.from) - num(b.from));
+    if (num(sorted[0].from) !== 0) W(at + ' starts at ' + num(sorted[0].from) + ' rather than 0; anything below that earns nothing.');
+    for (let k = 0; k < sorted.length - 1; k++) {
+      const to = (sorted[k].to == null || sorted[k].to === '') ? Infinity : num(sorted[k].to);
+      const nextFrom = num(sorted[k + 1].from);
+      if (to === Infinity) { E(at + ' has an open-ended band before its last one; only the final band may run to infinity.'); break; }
+      if (to < nextFrom) E(at + ' leaves a gap between ' + to + ' and ' + nextFrom + '; values there earn nothing.');
+      if (to > nextFrom) E(at + ' overlaps itself between ' + nextFrom + ' and ' + to + '.');
+    }
+    const last = sorted[sorted.length - 1];
+    if (last.to != null && last.to !== '')
+      W(at + ' is capped at ' + num(last.to) + '; anything above that earns nothing. Leave the last "to" blank for no ceiling.');
+
+    if (rt.basis === 'cumulative' && rt.poolBy && !known(rt.poolBy))
+      W(at + ' pools by a column that is not loaded.' + colNote(rt.poolBy));
+  });
+
+  /* --- rules ---------------------------------------------------------- */
+  const rules = plan.rules;
+  if (!Array.isArray(rules)) E('rules must be an array.');
+  else {
+    if (!rules.length) W('The plan has no rules, so no deal will earn anything.');
+    rules.forEach((r, i) => {
+      const at = 'Rule ' + (r && r.name ? '"' + r.name + '"' : '#' + (i + 1));
+      if (!r || typeof r !== 'object') { E(at + ' is not an object.'); return; }
+      if (r.match && ['all', 'any'].indexOf(r.match) < 0) E(at + ' has match "' + r.match + '"; expected all or any.');
+
+      (r.conditions || []).forEach((c, ci) => {
+        const cat = at + ' condition ' + (ci + 1);
+        if (!c || !c.field) E(cat + ' has no column.');
+        else if (!known(c.field)) W(cat + ' tests a column that is not loaded.' + colNote(c.field));
+        if (!OPS[c && c.op]) E(cat + ' uses an unknown test "' + (c && c.op) + '".');
+        else if (OPS[c.op].needsValue && String(c.value == null ? '' : c.value).trim() === '')
+          E(cat + ' needs a value for "' + OPS[c.op].label + '".');
+        if (c && c.op === 'between' && String(c.value || '').split(',').length < 2)
+          E(cat + ' uses "between" but its value is not two items separated by a comma.');
+      });
+
+      const a = r.action;
+      if (!a || typeof a !== 'object') { E(at + ' has no action.'); return; }
+      if (!ACTIONS[a.type]) { E(at + ' has action type "' + a.type + '"; expected one of ' + Object.keys(ACTIONS).join(', ') + '.'); return; }
+
+      if (a.type !== 'exclude') {
+        if (!a.measureField) E(at + ' has no measure column.');
+        else if (!known(a.measureField)) W(at + ' measures a column that is not loaded.' + colNote(a.measureField));
+        if (a.creditPctField && !known(a.creditPctField)) W(at + ' reads credit % from a column that is not loaded.' + colNote(a.creditPctField));
+        if (a.upliftField && !known(a.upliftField)) W(at + ' reads an uplift from a column that is not loaded.' + colNote(a.upliftField));
+        if (a.uplift != null && a.uplift !== '' && !numericish(a.uplift)) E(at + ' has a non-numeric uplift.');
+        if (a.uplift === 0) W(at + ' has an uplift of 0, which credits nothing.');
+      }
+
+      if (a.type === 'rateTable') {
+        const rt = tableById[a.rateTableId];
+        if (!a.rateTableId) E(at + ' applies a rate table but names none.');
+        else if (!rt) E(at + ' points at rate table "' + a.rateTableId + '", which does not exist.');
+        else if (rt.basis === 'attainment')
+          E(at + ' points at "' + rt.name + '", an attainment table. Rules take value or cumulative tables; attainment tables belong to quota components.');
+      }
+      if (a.type === 'percent' && !numericish(a.percent)) E(at + ' has a non-numeric percent.');
+      if (a.type === 'fixed' && !numericish(a.amount)) E(at + ' has a non-numeric amount.');
+      if (a.type === 'clawback') {
+        if (!num(a.clawbackRate) && !a.clawbackRateField)
+          E(at + ' is a clawback with no rate — set the rate originally paid, or a column holding it.');
+        if (a.clawbackRateField && !known(a.clawbackRateField)) W(at + ' reads its clawback rate from a column that is not loaded.' + colNote(a.clawbackRateField));
+        if (a.reducesBalance && !tableById[a.rateTableId])
+          E(at + ' restates a running balance but names no cumulative rate table.');
+      }
+    });
+
+    const live = rules.filter(r => r && r.enabled !== false);
+    if (live.length && (live[live.length - 1].conditions || []).length)
+      W('No catch-all rule: the last rule has conditions, so deals matching nothing will pay $0. Add a rule with no conditions at the bottom.');
+    live.forEach((r, i) => {
+      if (i < live.length - 1 && !(r.conditions || []).length)
+        W('Rule "' + r.name + '" has no conditions, so it matches every deal and nothing below it can ever run.');
+    });
+  }
+
+  /* --- components & modifiers ----------------------------------------- */
+  const comps = plan.components;
+  if (comps && !Array.isArray(comps)) E('components must be an array.');
+  else if (comps && comps.length) {
+    let weight = 0;
+    comps.forEach((c, i) => {
+      const at = 'Component ' + (c && c.name ? '"' + c.name + '"' : '#' + (i + 1));
+      weight += num(c.weight);
+      const rt = tableById[(c.payout || {}).rateTableId];
+      if (!(c.payout || {}).rateTableId) E(at + ' has no attainment rate table.');
+      else if (!rt) E(at + ' points at rate table "' + c.payout.rateTableId + '", which does not exist.');
+      else if (rt.basis !== 'attainment') E(at + ' points at "' + rt.name + '", a ' + rt.basis + ' table. Components take attainment tables.');
+      if (c.actualSource === 'sum' && !c.actualField) E(at + ' sums a column but names none.');
+      if (c.actualSource === 'sum' && c.actualField && !known(c.actualField)) W(at + ' sums a column that is not loaded.' + colNote(c.actualField));
+      if (num(c.quota) <= 0) W(at + ' has no quota, so its attainment reads 0%.');
+    });
+    if (Math.abs(weight - 100) > 0.01) W('Component weights total ' + weight + '%, not 100%.');
+  }
+
+  const mods = plan.modifiers;
+  if (mods && !Array.isArray(mods)) E('modifiers must be an array.');
+  else (mods || []).forEach((m, i) => {
+    const at = 'Modifier ' + (m && m.name ? '"' + m.name + '"' : '#' + (i + 1));
+    const opts = m.options || [];
+    if (!opts.length) { E(at + ' has no options.'); return; }
+    if (!(num(m.selected) >= 0 && num(m.selected) < opts.length)) E(at + ' has no valid option selected.');
+    opts.forEach((o, oi) => { if (!numericish(o.factor)) E(at + ' option ' + (oi + 1) + ' has a non-numeric factor.'); });
+    if (m.appliesTo && ['all', 'deals', 'quota'].indexOf(m.appliesTo) < 0)
+      E(at + ' applies to "' + m.appliesTo + '"; expected all, deals or quota.');
+  });
+
+  if (plan.accrual && plan.accrual.sortField && !known(plan.accrual.sortField))
+    W('Deals are ordered by a column that is not loaded.' + colNote(plan.accrual.sortField));
+
+  return { ok: errors.length === 0, errors, warnings };
 }
 
 /* ---- the calculation -------------------------------------------------- */
@@ -2094,8 +2310,7 @@ $('#btn-copy-detail').addEventListener('click', () => {
   copy(toCSV(cols, rows), 'Deal detail copied as CSV');
 });
 
-$('#btn-copy-audit').addEventListener('click', () => {
-  const r = window.LAST_RESULT || calculate(PLAN, DATA);
+function auditMarkdown(r) {
   const L = [
     '# ' + (PLAN.meta.planName || 'Commission calculation'), '',
     'Payee: ' + (PLAN.payee.name || '—') + (PLAN.payee.id ? ' (' + PLAN.payee.id + ')' : ''),
@@ -2112,8 +2327,232 @@ $('#btn-copy-audit').addEventListener('click', () => {
     '- Quota-based commission: ' + money(r.quotaTotal),
     '- Total variable earnings: ' + money(r.variable));
   if (r.warnings.length) L.push('', '## Warnings', '', ...r.warnings.map(x => '- ' + x));
-  copy(L.join('\n'), 'Audit trail copied as Markdown');
+  return L.join('\n');
+}
+
+$('#btn-copy-audit').addEventListener('click', () => {
+  copy(auditMarkdown(window.LAST_RESULT || calculate(PLAN, DATA)), 'Audit trail copied as Markdown');
 });
+
+/* ------------------------------ 7. AGENT ------------------------------- */
+/* The page holds no API key. It calls a proxy the user deploys; that proxy
+   holds the key. Everything the model returns is validated before it can
+   touch the plan, and the user applies it explicitly. */
+
+const AGENT_KEYS = { url: 'cc.agent.url', pass: 'cc.agent.pass' };
+let DRAFT = null;
+
+function agentGet(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
+function agentSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } }
+
+$('#agent-url').value  = agentGet(AGENT_KEYS.url);
+$('#agent-pass').value = agentGet(AGENT_KEYS.pass);
+$('#agent-url').addEventListener('input',  e => agentSet(AGENT_KEYS.url, e.target.value.trim()));
+$('#agent-pass').addEventListener('input', e => agentSet(AGENT_KEYS.pass, e.target.value));
+$('#btn-agent-cfg').addEventListener('click', () => {
+  const d = $('#agent-cfg'); d.open = !d.open;
+  if (d.open) ($('#agent-url').value.trim() ? $('#agent-pass') : $('#agent-url')).focus();
+});
+
+function agentStatus(msg, kind) {
+  const el = $('#agent-status');
+  el.textContent = msg || '';
+  el.style.color = kind === 'error' ? 'var(--red)' : kind === 'ok' ? 'var(--blue)' : 'var(--muted)';
+}
+
+/* Hosted on Netlify, the proxy sits on this same origin, so no configuration
+   is needed. The endpoint field only matters when the page and the proxy live
+   apart — a static host such as GitHub Pages with a Worker behind it. */
+const SAME_ORIGIN_ENDPOINT = '/api/draft-plan';
+
+function agentEndpoint() {
+  const typed = $('#agent-url').value.trim();
+  return typed || SAME_ORIGIN_ENDPOINT;
+}
+
+async function callAgent(payload) {
+  const url = agentEndpoint();
+  const sameOrigin = url === SAME_ORIGIN_ENDPOINT;
+  let res;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-passphrase': $('#agent-pass').value },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {
+    $('#agent-cfg').open = true;
+    throw new Error(sameOrigin
+      ? 'Could not reach ' + SAME_ORIGIN_ENDPOINT + ' on this origin. Opening the page from a file:// path has no server behind it — deploy it, or set an endpoint URL.'
+      : 'Could not reach ' + url + '. Check the URL and that the proxy is deployed.');
+  }
+
+  if (res.status === 404) {
+    $('#agent-cfg').open = true;
+    throw new Error(sameOrigin
+      ? 'No function is deployed at ' + SAME_ORIGIN_ENDPOINT + '. On Netlify, commit netlify/functions/ and api/ and redeploy.'
+      : 'Nothing is deployed at ' + url + '.');
+  }
+
+  let data;
+  try { data = await res.json(); }
+  catch (e) { throw new Error('The endpoint returned something that is not JSON (HTTP ' + res.status + ').'); }
+  if (!res.ok) {
+    if (res.status === 401) $('#agent-cfg').open = true;
+    throw new Error(data.error || ('The endpoint returned HTTP ' + res.status + '.'));
+  }
+  return data;
+}
+
+function planFromDraft(d) {
+  return Object.assign({}, PLAN, {
+    meta: Object.assign({}, PLAN.meta, d.planName ? { planName: d.planName } : {}),
+    accrual: d.accrual && d.accrual.sortField != null ? d.accrual : PLAN.accrual,
+    rateTables: d.rateTables || [],
+    rules: d.rules || [],
+    components: d.components || []
+  });
+}
+
+function listBlock(title, items, cls) {
+  if (!items || !items.length) return '';
+  return '<div class="callout' + (cls ? ' ' + cls : '') + '" style="margin-top:12px"><span>' +
+    (cls === 'err' ? '&#9888;' : '&#9432;') + '</span><div><b>' + esc(title) + '</b><ul style="margin:6px 0 0;padding-left:18px">' +
+    items.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul></div></div>';
+}
+
+function renderDraft(d) {
+  DRAFT = d;
+  const candidate = planFromDraft(d);
+  const v = validatePlan(candidate, DATA);
+  const tables = (d.rateTables || []), rules = (d.rules || []);
+
+  $('#agent-out').innerHTML = `
+    <div class="blk" style="margin-top:18px">
+      <div class="blk-top">
+        <span class="tag">Proposed</span>
+        <strong style="font-size:15px">${esc(d.planName || 'Drafted configuration')}</strong>
+        <span style="margin-left:auto;font-family:var(--mono);font-size:12.5px;color:var(--muted)">
+          ${tables.length} rate table${tables.length === 1 ? '' : 's'} &middot; ${rules.length} rule${rules.length === 1 ? '' : 's'}
+        </span>
+      </div>
+
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Rate table</th><th>Basis</th><th>Shape</th><th class="n">Bands</th></tr></thead>
+          <tbody>
+            ${tables.map(rt => `<tr><td>${esc(rt.name)}</td><td>${esc(rt.basis)}</td>
+              <td>${esc((MODE_LABELS[rt.basis] || {})[rt.mode] || rt.mode)}</td>
+              <td class="n">${(rt.tiers || []).length}</td></tr>`).join('') ||
+              '<tr><td colspan="4" style="color:var(--muted)">none</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="tbl-scroll" style="margin-top:14px">
+        <table>
+          <thead><tr><th class="n">#</th><th>Rule</th><th>When</th><th>Then</th></tr></thead>
+          <tbody>
+            ${rules.map((r, i) => {
+              const cond = (r.conditions || []).length
+                ? (r.conditions || []).map(describeCondition).join(r.match === 'any' ? ' OR ' : ' AND ')
+                : 'catch-all';
+              const a = r.action || {};
+              const bits = [ACTIONS[a.type] || a.type];
+              if (a.measureField) bits.push('on ' + a.measureField);
+              if (a.uplift && num(a.uplift) !== 1) bits.push(num(a.uplift) + '\u00d7 uplift');
+              if (a.type === 'rateTable') {
+                const t = tables.find(x => x.id === a.rateTableId);
+                bits.push(t ? t.name : '\u26a0 missing table');
+              }
+              if (a.type === 'percent') bits.push(num(a.percent) + '%');
+              if (a.type === 'fixed') bits.push(money0(num(a.amount)));
+              return `<tr><td class="n">${i + 1}</td><td><strong>${esc(r.name)}</strong></td>
+                <td style="white-space:normal;min-width:200px">${esc(cond)}</td>
+                <td style="white-space:normal;min-width:200px">${esc(bits.join(' \u00b7 '))}</td></tr>`;
+            }).join('') || '<tr><td colspan="4" style="color:var(--muted)">none</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+
+      ${listBlock('Judgement calls', d.notes)}
+      ${listBlock('Could not be expressed \u2014 handle these by hand', d.unsupported, 'err')}
+      ${listBlock('Validation errors \u2014 this will not calculate correctly as-is', v.errors, 'err')}
+      ${listBlock('Validation warnings', v.warnings)}
+
+      <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;align-items:center">
+        <button class="btn sm ${v.ok ? 'blue' : ''}" id="btn-apply-draft">${v.ok ? 'Apply to the plan' : 'Apply anyway'}</button>
+        <button class="btn sm" id="btn-discard-draft">Discard</button>
+        <span style="font-family:var(--mono);font-size:12px;color:var(--muted)">
+          ${v.ok ? 'Validates cleanly' : v.errors.length + ' error' + (v.errors.length === 1 ? '' : 's') + ' \u2014 review before applying'}
+        </span>
+      </div>
+
+      <details class="io"><summary>Proposed JSON</summary>
+        <div class="body"><textarea class="json" readonly spellcheck="false">${esc(JSON.stringify(d, null, 2))}</textarea></div>
+      </details>
+    </div>`;
+
+  $('#btn-apply-draft').addEventListener('click', () => {
+    PLAN = planFromDraft(DRAFT);
+    renderAll();
+    $('#agent-out').innerHTML = '';
+    agentStatus('Applied \u2014 sections 04 onward now reflect the draft', 'ok');
+    toast('Draft applied');
+  });
+  $('#btn-discard-draft').addEventListener('click', () => {
+    DRAFT = null; $('#agent-out').innerHTML = ''; agentStatus('');
+  });
+}
+
+function renderVerify(v) {
+  const sev = { error: 'err', warning: '', note: '' };
+  const icon = { matches: '\u2713', discrepancies: '\u26a0', cannot_tell: '?' };
+  $('#agent-out').innerHTML = `
+    <div class="blk" style="margin-top:18px">
+      <div class="blk-top">
+        <span class="tag${v.verdict === 'matches' ? '' : ' grey'}">${icon[v.verdict] || ''} ${esc(v.verdict.replace('_', ' '))}</span>
+        <strong style="font-size:15px;font-weight:500">${esc(v.summary || '')}</strong>
+      </div>
+      ${(v.findings || []).length ? (v.findings || []).map(f => `
+        <div class="callout${f.severity === 'error' ? ' err' : ''}" style="margin-top:10px">
+          <span>${f.severity === 'error' ? '&#9888;' : '&#9432;'}</span>
+          <div><b>${esc(f.area)}</b><br>${esc(f.detail)}
+            ${f.quote ? '<div style="margin-top:6px;font-family:var(--mono);font-size:11.5px;opacity:.8">\u201c' + esc(f.quote) + '\u201d</div>' : ''}
+          </div>
+        </div>`).join('') : '<p class="empty">No findings.</p>'}
+    </div>`;
+}
+
+async function runAgent(mode) {
+  const doc = $('#agent-doc').value.trim();
+  if (!doc) { agentStatus('Paste the plan document first.', 'error'); return; }
+  const btns = [$('#btn-draft'), $('#btn-verify')];
+  btns.forEach(b => { b.disabled = true; });
+  agentStatus(mode === 'verify' ? 'Checking the plan against the document\u2026' : 'Reading the plan document\u2026');
+  try {
+    const payload = { mode, document: doc, columns: DATA.columns };
+    if (mode === 'verify') {
+      const r = window.LAST_RESULT || calculate(PLAN, DATA);
+      payload.plan = PLAN;
+      payload.audit = auditMarkdown(r);
+      payload.result = 'Deal commission ' + money(r.dealGross) + ', quota commission ' + money(r.quotaGross) +
+                       ', total variable ' + money(r.variable) + '.';
+    }
+    const out = await callAgent(payload);
+    const used = out.usage ? ' \u00b7 ' + (out.usage.input_tokens || 0) + ' in / ' + (out.usage.output_tokens || 0) + ' out' : '';
+    agentStatus((out.model || 'model') + used, 'ok');
+    if (mode === 'verify') renderVerify(out.result); else renderDraft(out.result);
+  } catch (err) {
+    agentStatus(err.message, 'error');
+    $('#agent-out').innerHTML = '<div class="callout err" style="margin-top:14px"><span>&#9888;</span><div>' + esc(err.message) + '</div></div>';
+  } finally {
+    btns.forEach(b => { b.disabled = false; });
+  }
+}
+
+$('#btn-draft').addEventListener('click', () => runAgent('draft'));
+$('#btn-verify').addEventListener('click', () => runAgent('verify'));
 
 /* ------------------------------ 6. UTIL UI ----------------------------- */
 let toastTimer;
@@ -2138,7 +2577,7 @@ function copy(text, msg) {
 
 /* exposed for the agent layer / console testing */
 window.CommissionEngine = {
-  calculate, defaultPlan, csvToData, parseCSV,
+  calculate, validatePlan, defaultPlan, csvToData, parseCSV,
   getPlan: () => PLAN, getData: () => DATA,
   setPlan: p => { PLAN = p; renderAll(); },
   setData: d => { DATA = d; renderAll(); }

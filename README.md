@@ -14,6 +14,10 @@ every figure is traceable.
 | `test-engine.js` | Node test suite for the engine (`node test-engine.js`) |
 | `sample-deals.csv` | The deal export the built-in plan loads with |
 | `netlify.toml` | Netlify config (publish root, functions dir, security headers) |
+| `api/agent-core.mjs` | The agent proxy — prompts, tool schema, guards |
+| `worker/` | Cloudflare Worker wrapper for the proxy |
+| `netlify/functions/` | Netlify Function wrapper for the proxy |
+| `test-agent-ui.js` | Browser test of the agent panel against a mocked endpoint |
 
 ## Architecture
 
@@ -219,13 +223,96 @@ a normal rule (which cumulative bands cannot pay — use a clawback instead).
 `bands[]` and, for retro, `retro.asAccrued`) and `accrualOrder` — the row indices
 in the order they were credited.
 
+## The agent layer
+
+Section 03 takes a plan document in plain English and proposes the rate tables
+and rules for it. Nothing is applied until you review a diff, and
+`validatePlan()` gates what may be applied at all.
+
+**The model writes configuration, never a payout.** It proposes rate tables and
+rules; the deterministic engine still computes every figure, and the audit trail
+still shows its work. That boundary is why the plan and the data were kept as
+separate objects from the start.
+
+Two modes:
+
+- **Draft** — plan document plus your CSV's column names in, proposed rate tables
+  and rules out, with `notes` (every judgement call it made) and `unsupported`
+  (plan terms the schema cannot express, stated rather than approximated).
+- **Verify** — the document, the resulting configuration and the audit trail go
+  back, and it reports findings: wrong threshold boundaries, per-deal tiering
+  where the document means period-to-date, missing exclusions or clawbacks,
+  rules ordered so an earlier one swallows a later one.
+
+### Why there is a server at all
+
+The API key must never reach the browser. This page is static — anyone can open
+View Source — so the key lives in the server environment and the page calls a
+proxy that holds it.
+
+```
+  index.html                 /api/draft-plan              Anthropic
+  no key at all       ──▶   agent-core.mjs        ──▶   api.anthropic.com
+                            ANTHROPIC_API_KEY
+                            PASSPHRASE
+```
+
+### Deploying on Netlify (same origin)
+
+`netlify/functions/draft-plan.mjs` serves the proxy at `/api/draft-plan` on the
+site's own origin, so the page needs no configuration — leave the endpoint field
+blank and it calls itself. No CORS is involved.
+
+1. Commit `api/` and `netlify/` — they are new directories, so `git add` them
+   explicitly. A deploy without them leaves `/api/draft-plan` returning 404,
+   which the page now says in as many words.
+2. In **Site configuration → Environment variables**, set:
+   - `ANTHROPIC_API_KEY` — from console.anthropic.com
+   - `PASSPHRASE` — anything; the page asks for it
+   - `ALLOWED_ORIGIN` — the site URL, optional but worth setting
+3. Redeploy.
+
+**Set `PASSPHRASE` before the site is public.** Without it the proxy answers
+anyone who finds the URL, and every call spends your API credits.
+
+### Deploying the proxy elsewhere (GitHub Pages, or any static host)
+
+When the page and the proxy live apart, deploy `worker/` to Cloudflare Workers:
+
+```bash
+cd worker
+npx wrangler deploy
+npx wrangler secret put ANTHROPIC_API_KEY
+npx wrangler secret put PASSPHRASE
+```
+
+Then click **Endpoint** in section 03 and paste the `*.workers.dev` URL. Set
+`ALLOWED_ORIGIN` in `wrangler.toml` to the page's origin. Both wrappers call the
+same `api/agent-core.mjs`; only the few lines around it differ.
+
+### Guards
+
+The proxy refuses anything without the passphrase, caps the document at 60,000
+characters and the body at 400KB, rejects non-POST methods, and answers CORS
+preflight. It returns token usage so you can see what each call cost. A draft on
+a 4,000-character document runs roughly 6k input / 2k output tokens. Check
+current pricing before assuming a figure.
+
+### If you would rather not run a server
+
+The alternative is browser-direct calls, where each user pastes their **own** key
+and the request carries `anthropic-dangerous-direct-browser-access: true`. The
+header is named as a warning. It works and costs you nothing, but every visitor
+needs their own key — a poor fit for anything you hand to someone else. Not
+implemented here.
+
 ## Testing
 
 ```
 node test-engine.js
 ```
 
-211 assertions: CSV parsing (quoted commas, escaped quotes, currency, duplicate
+248 assertions: CSV parsing (quoted commas, escaped quotes, currency, duplicate
 headers); hand-computed payouts for all three per-deal shapes and all three
 cumulative shapes; accrual ordering (ascending, descending, numeric, date, file
 order) and its effect on both attribution and totals; pool scoping via `poolBy`;
@@ -237,6 +324,11 @@ proration; thresholds and caps; missing-column detection; audit-trail integrity;
 and a full end-to-end regression of the shipped plan, deal by deal. The plan the
 app previously shipped with is kept in the test file as a fixture, so per-deal
 rate-table shapes, quota components and modifiers stay covered.
+
+`node test-agent-ui.js` runs 41 more against a mocked endpoint, covering the
+agent panel end to end: settings persistence, the draft round-trip, validation
+blocking a bad draft, applying a draft and watching the engine recalculate from
+it, verify mode, and the failure paths.
 
 ## Roadmap
 

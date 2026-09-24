@@ -5,8 +5,8 @@ const script = html.split('<script>')[1].split('</script>')[0];
 const engineSrc = script.split('/* ------------------------------ 4. RENDER')[0];
 const mod = { exports: {} };
 new Function('module', engineSrc +
-  '\nmodule.exports={calculate,defaultPlan,csvToData,parseCSV,SAMPLE_CSV,applyValueTable,walkBands,ruleMatches,testCondition,num};')(mod);
-const { calculate, defaultPlan, csvToData, SAMPLE_CSV, applyValueTable, walkBands, testCondition, num } = mod.exports;
+  '\nmodule.exports={calculate,validatePlan,defaultPlan,csvToData,parseCSV,SAMPLE_CSV,applyValueTable,walkBands,ruleMatches,testCondition,num};')(mod);
+const { calculate, validatePlan, defaultPlan, csvToData, SAMPLE_CSV, applyValueTable, walkBands, testCondition, num } = mod.exports;
 
 /* The plan the app used to ship as its default. Kept here as a fixture so
    per-deal rate-table shapes (marginal / cliff / flat), quota components and
@@ -15,7 +15,7 @@ function mdvipPlan() {
   return {
     version: 3,
     meta: { planName: 'FY26 Practice Development Plan', periodStart: '2026-01-01', periodEnd: '2026-12-31' },
-    payee: { name: 'Walter White', id: 'EMP-1042', startDate: '', endDate: '', prorate: true, targetIncentive: 40000 },
+    payee: { name: 'Jordan Blake', id: 'EMP-1042', startDate: '', endDate: '', prorate: true, targetIncentive: 40000 },
 
     /* Order deals are credited in. Only matters for cumulative rate tables,
        where the band a deal earns depends on the balance before it. */
@@ -512,7 +512,7 @@ check('a negative row on a normal rule warns instead of silently paying 0',
   r.warnings.some(w => w.includes('negative amount')), true);
 
 /* ---- 20. the SHIPPED default plan, end to end ------------------------ */
-console.log('\n20. Shipped default — FY26 AE, August 2026 close');
+console.log('\n20. Shipped default — FY26 AE (Rancher 2), August 2026 close');
 r = calculate(defaultPlan(), csvToData(SAMPLE_CSV, 'sample-deals.csv'));
 const E = {}; r.detail.forEach(x => { E[x.row['Opp ID']] = x; });
 
@@ -557,6 +557,75 @@ check('a catch-all sits at the bottom',
   (defaultPlan().rules[defaultPlan().rules.length - 1].conditions || []).length, 0);
 check('every deal matched a rule', r.unmatched, 0);
 check('detail covers every row', r.detail.length, 8);
+
+/* ---- 21. plan validation --------------------------------------------- */
+console.log('\n21. Plan validation');
+
+const sd = csvToData(SAMPLE_CSV, 'sample-deals.csv');
+check('shipped plan validates clean', validatePlan(defaultPlan(), sd).ok, true);
+check('  with no warnings', validatePlan(defaultPlan(), sd).warnings.length, 0);
+check('old fixture validates clean', validatePlan(mdvipPlan(), sample()).ok, true);
+
+const errOf = (mut, needle) => {
+  const q = defaultPlan(); mut(q);
+  const v = validatePlan(q, sd);
+  return v.errors.some(e => e.indexOf(needle) >= 0);
+};
+const warnOf = (mut, needle) => {
+  const q = defaultPlan(); mut(q);
+  return validatePlan(q, sd).warnings.some(w => w.indexOf(needle) >= 0);
+};
+
+console.log('   rate tables');
+check('band gap', errOf(q => { q.rateTables[0].tiers[1].to = 900000; }, 'leaves a gap'), true);
+check('band overlap', errOf(q => { q.rateTables[0].tiers[1].to = 1100000; }, 'overlaps itself'), true);
+check('band ends before it starts', errOf(q => { q.rateTables[0].tiers[1].to = 400000; }, 'ends at or before'), true);
+check('open band before the last', errOf(q => { q.rateTables[0].tiers[1].to = null; }, 'open-ended band before'), true);
+check('unknown basis', errOf(q => { q.rateTables[0].basis = 'sideways'; }, 'expected value, cumulative or attainment'), true);
+check('mode wrong for basis', errOf(q => { q.rateTables[0].mode = 'cliff'; }, 'not valid for a cumulative table'), true);
+check('duplicate table ids', errOf(q => { q.rateTables.push(Object.assign({}, q.rateTables[0])); }, 'share the id'), true);
+check('no bands', errOf(q => { q.rateTables[0].tiers = []; }, 'has no bands'), true);
+check('non-numeric rate', errOf(q => { q.rateTables[0].tiers[0].rate = 'ten'; }, 'non-numeric rate'), true);
+check('blank rate', errOf(q => { q.rateTables[0].tiers[0].rate = ''; }, 'non-numeric rate'), true);
+check('"10%" is still a rate', errOf(q => { q.rateTables[0].tiers[0].rate = '10%'; }, 'non-numeric rate'), false);
+check('non-numeric uplift', errOf(q => { q.rules[3].action.uplift = 'one and a bit'; }, 'non-numeric uplift'), true);
+check('non-numeric modifier factor', errOf(q => { q.modifiers = [{ id: 'm', name: 'M', selected: 0, options: [{ label: 'a', factor: 'half' }] }]; }, 'non-numeric factor'), true);
+check('capped top band warns', warnOf(q => { q.rateTables[0].tiers[3].to = 2000000; }, 'is capped at'), true);
+check('table not starting at 0 warns', warnOf(q => { q.rateTables[0].tiers[0].from = 100; }, 'rather than 0'), true);
+
+console.log('   rules');
+check('missing rate table', errOf(q => { q.rules[4].action.rateTableId = 'ghost'; }, 'does not exist'), true);
+check('rule pointed at an attainment table', errOf(q => {
+  q.rateTables.push({ id: 'att', name: 'Curve', basis: 'attainment', mode: 'marginal', tiers: [{ from: 0, to: null, rate: 1 }] });
+  q.rules[4].action.rateTableId = 'att';
+}, 'attainment tables belong to quota components'), true);
+check('unknown action type', errOf(q => { q.rules[4].action.type = 'wish'; }, 'expected one of'), true);
+check('unknown operator', errOf(q => { q.rules[2].conditions[0].op = 'kinda'; }, 'unknown test'), true);
+check('operator missing its value', errOf(q => { q.rules[2].conditions[0].value = ''; }, 'needs a value'), true);
+check('between with one bound', errOf(q => { q.rules[2].conditions[0].op = 'between'; q.rules[2].conditions[0].value = '5'; }, 'not two items'), true);
+check('missing measure column', errOf(q => { q.rules[4].action.measureField = ''; }, 'no measure column'), true);
+check('clawback with no rate', errOf(q => { q.rules[0].action.clawbackRate = 0; q.rules[0].action.clawbackRateField = ''; }, 'clawback with no rate'), true);
+check('unknown column warns', warnOf(q => { q.rules[2].conditions[0].field = 'Nope'; }, 'not in the loaded data'), true);
+check('missing catch-all warns', warnOf(q => { q.rules.pop(); }, 'No catch-all rule'), true);
+check('unreachable rule warns', warnOf(q => { q.rules.unshift({ id: 'x', name: 'Everything', enabled: true, match: 'all', conditions: [], action: { type: 'exclude', measureField: 'Software ARR' } }); }, 'nothing below it can ever run'), true);
+
+console.log('   components and modifiers');
+const comp = { id: 'c', name: 'Prod', weight: 100, quota: 100, payout: { rateTableId: 'rt-ytd' } };
+check('component on a cumulative table', errOf(q => { q.components = [comp]; }, 'Components take attainment tables'), true);
+check('component summing an unnamed column', errOf(q => {
+  q.rateTables.push({ id: 'att', name: 'C', basis: 'attainment', mode: 'marginal', tiers: [{ from: 0, to: null, rate: 1 }] });
+  q.components = [Object.assign({}, comp, { payout: { rateTableId: 'att' }, actualSource: 'sum', actualField: '' })];
+}, 'sums a column but names none'), true);
+check('modifier with no options', errOf(q => { q.modifiers = [{ id: 'm', name: 'M', selected: 0, options: [] }]; }, 'has no options'), true);
+check('modifier selection out of range', errOf(q => { q.modifiers = [{ id: 'm', name: 'M', selected: 4, options: [{ label: 'a', factor: 1 }] }]; }, 'no valid option selected'), true);
+check('modifier bad scope', errOf(q => { q.modifiers = [{ id: 'm', name: 'M', selected: 0, appliesTo: 'sideways', options: [{ label: 'a', factor: 1 }] }]; }, 'expected all, deals or quota'), true);
+
+console.log('   shape guards');
+check('not an object', validatePlan(null).ok, false);
+check('no data loaded means no column complaints',
+  validatePlan(defaultPlan(), { columns: [], rows: [] }).warnings.filter(w => w.indexOf('not in the loaded data') >= 0).length, 0);
+check('an invalid plan still reports every error, not just the first',
+  (function () { const q = defaultPlan(); q.rules[4].action.rateTableId = 'ghost'; q.rateTables[0].tiers[1].to = 900000; return validatePlan(q, sd).errors.length; })(), 2);
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
 process.exit(fail ? 1 : 0);
