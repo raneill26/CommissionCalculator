@@ -259,7 +259,7 @@ footer .r{margin-left:auto}
       <div class="fields">
         <div class="f">
           <label for="payeeName">Payee</label>
-          <div class="ipt"><input id="payeeName" type="text" data-path="payee.name" placeholder="Jordan Blake"></div>
+          <div class="ipt"><input id="payeeName" type="text" data-path="payee.name" placeholder="Walter White"></div>
         </div>
         <div class="f">
           <label for="payeeId">Employee ID</label>
@@ -550,14 +550,14 @@ const MODE_BLURB = {
 function defaultPlan() {
   return {
     version: 3,
-    meta: { planName: 'FY26 AE (Rancher 2) — Commercial · August 2026',
+    meta: { planName: 'FY26 AE · August 2026',
             periodStart: '2026-01-01', periodEnd: '2026-12-31' },
 
     /* OTE $200,000 on a 50/50 mix: base $100,000 / TTV $100,000. Base is out of
        scope here; the TTV is what the curve below pays out at 100% of quota
        ($1,000,000 × 10%). Recorded for reference — with no quota components,
        commission comes entirely from the credited-ARR curve. */
-    payee: { name: 'Jordan Kim', id: '4417', startDate: '', endDate: '',
+    payee: { name: 'Gus Fring', id: '308', startDate: '', endDate: '',
              prorate: false, targetIncentive: 100000 },
 
     /* A deal must be Closed Won by the last day of the fiscal month to count

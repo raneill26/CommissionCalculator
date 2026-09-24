@@ -15,7 +15,7 @@ function mdvipPlan() {
   return {
     version: 3,
     meta: { planName: 'FY26 Practice Development Plan', periodStart: '2026-01-01', periodEnd: '2026-12-31' },
-    payee: { name: 'Jordan Blake', id: 'EMP-1042', startDate: '', endDate: '', prorate: true, targetIncentive: 40000 },
+    payee: { name: 'Walter White', id: 'EMP-1042', startDate: '', endDate: '', prorate: true, targetIncentive: 40000 },
 
     /* Order deals are credited in. Only matters for cumulative rate tables,
        where the band a deal earns depends on the balance before it. */
@@ -512,7 +512,7 @@ check('a negative row on a normal rule warns instead of silently paying 0',
   r.warnings.some(w => w.includes('negative amount')), true);
 
 /* ---- 20. the SHIPPED default plan, end to end ------------------------ */
-console.log('\n20. Shipped default — FY26 AE (Rancher 2), August 2026 close');
+console.log('\n20. Shipped default — FY26 AE, August 2026 close');
 r = calculate(defaultPlan(), csvToData(SAMPLE_CSV, 'sample-deals.csv'));
 const E = {}; r.detail.forEach(x => { E[x.row['Opp ID']] = x; });
 

@@ -29,30 +29,6 @@ uploaded deal level data from the user. The agent layer (TODO) will author the p
 produces has an audit step recording the label, the formula, and
 the value. 
 
-
-## The built-in plan
-
-The calculator opens on a worked example: an FY26 AE (Rancher 2) Commercial plan
-and one rep's August close. It exercises most of the engine at once —
-
-- **A cumulative credited-ARR curve** with $650,000 of prior year-to-date credit
-  carried in, marginal bands at 10 / 15 / 20% for 0-100 / 100-150 / 150%+ of a
-  $1,000,000 quota, and a 0% band below 50% attainment for the plan's
-  decelerator (inert here, since the year opens above it)
-- **Multi-year crediting** as two rules — New Business needs a term over 24
-  months, Renewals over 18 — each applying a 1.15x uplift to credited ARR
-- **A fiscal-month cutoff**, so a deal closing September 3 falls to the next period
-- **An overlay split** crediting 60% of one deal
-- **Professional services excluded** by measuring Software ARR rather than TCV
-- **A clawback** on a June booking cancelled inside the 90-day window, recovered
-  at the 1.0x rate it was originally paid
-
-It settles at $871,000 of creditable ARR, 152.1% year-to-date attainment,
-$114,200 gross and $110,200 net after the clawback. Reset returns to it; Load
-sample reloads both the plan and its deal file.
-
-All names and figures in it are fictional.
-
 ## Deal data
 
 A CSV where each row is one deal and the first row is column headers. Rules reference whatever headers are uploaded. Values are read tolerantly: `$1,200,000`, `1200000` 
