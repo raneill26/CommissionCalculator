@@ -8,6 +8,82 @@ new Function('module', engineSrc +
   '\nmodule.exports={calculate,defaultPlan,csvToData,parseCSV,SAMPLE_CSV,applyValueTable,walkBands,ruleMatches,testCondition,num};')(mod);
 const { calculate, defaultPlan, csvToData, SAMPLE_CSV, applyValueTable, walkBands, testCondition, num } = mod.exports;
 
+/* The plan the app used to ship as its default. Kept here as a fixture so
+   per-deal rate-table shapes (marginal / cliff / flat), quota components and
+   modifiers stay covered now that the shipped default is the FY26 AE plan. */
+function mdvipPlan() {
+  return {
+    version: 3,
+    meta: { planName: 'FY26 Practice Development Plan', periodStart: '2026-01-01', periodEnd: '2026-12-31' },
+    payee: { name: 'Jordan Blake', id: 'EMP-1042', startDate: '', endDate: '', prorate: true, targetIncentive: 40000 },
+
+    /* Order deals are credited in. Only matters for cumulative rate tables,
+       where the band a deal earns depends on the balance before it. */
+    accrual: { sortField: 'Close Date', direction: 'asc' },
+
+    rateTables: [
+      { id: 'rt-succession', name: 'Succession — deal value', basis: 'value', mode: 'marginal',
+        tiers: [ { from: 0, to: 250000, rate: 4 }, { from: 250000, to: 500000, rate: 5 }, { from: 500000, to: null, rate: 6 } ] },
+      { id: 'rt-transition', name: 'Transition — deal value', basis: 'value', mode: 'cliff',
+        tiers: [ { from: 0, to: 200000, rate: 3 }, { from: 200000, to: 400000, rate: 3.5 }, { from: 400000, to: null, rate: 4 } ] },
+      { id: 'rt-fullbuild', name: 'Full Build — flat per deal', basis: 'value', mode: 'flat',
+        tiers: [ { from: 0, to: 300000, rate: 5000 }, { from: 300000, to: null, rate: 9000 } ] },
+      { id: 'rt-acv', name: 'ACV credit — cumulative', basis: 'cumulative', mode: 'marginal',
+        poolBy: '', openingBalance: 0,
+        tiers: [ { from: 0, to: 15000, rate: 2 }, { from: 15000, to: 30000, rate: 4 },
+                 { from: 30000, to: 45000, rate: 6 }, { from: 45000, to: null, rate: 8 } ] },
+      { id: 'rt-quota', name: 'Standard quota curve', basis: 'attainment', mode: 'marginal',
+        tiers: [ { from: 0, to: 100, rate: 1 }, { from: 100, to: 150, rate: 1.5 }, { from: 150, to: null, rate: 2 } ] }
+    ],
+
+    rules: [
+      { id: 'r1', name: 'Succession deals', enabled: true, match: 'all',
+        conditions: [ { field: 'Deal Type', op: 'is', value: 'Succession' } ],
+        action: { type: 'rateTable', measureField: 'Deal Value', rateTableId: 'rt-succession', percent: 0, amount: 0, creditPctField: 'Credit %' } },
+      { id: 'r2', name: 'Transition deals', enabled: true, match: 'all',
+        conditions: [ { field: 'Deal Type', op: 'is', value: 'Transition' } ],
+        action: { type: 'rateTable', measureField: 'Deal Value', rateTableId: 'rt-transition', percent: 0, amount: 0, creditPctField: 'Credit %' } },
+      { id: 'r3', name: 'Full Build deals', enabled: true, match: 'all',
+        conditions: [ { field: 'Deal Type', op: 'is', value: 'Full Build' } ],
+        action: { type: 'rateTable', measureField: 'Deal Value', rateTableId: 'rt-fullbuild', percent: 0, amount: 0, creditPctField: 'Credit %' } },
+      { id: 'r4', name: 'Everything else — cumulative ACV', enabled: true, match: 'all',
+        conditions: [],
+        action: { type: 'rateTable', measureField: 'Deal Value', rateTableId: 'rt-acv', percent: 0, amount: 0, creditPctField: 'Credit %' } }
+    ],
+
+    components: [
+      { id: 'c1', name: 'Annual production', weight: 100, quota: 2500000,
+        actualSource: 'sum', actualField: 'Deal Value', actual: 0, prorateQuota: true,
+        payout: { rateTableId: 'rt-quota', thresholdPct: 0, capPct: 250 } }
+    ],
+
+    modifiers: [
+      { id: 'm1', name: 'Adherence rating', appliesTo: 'all', selected: 1,
+        options: [
+          { label: '5 — Excellent', factor: 1 },
+          { label: '4 — Good', factor: 0.9 },
+          { label: '3 — Satisfactory', factor: 0.75 },
+          { label: '2 — Needs improvement', factor: 0.5 },
+          { label: '1 — Unsatisfactory', factor: 0.25 }
+        ] }
+    ]
+  };
+}
+
+const MDVIP_CSV =
+`Deal ID,Practice,Deal Type,Close Date,Deal Value,Credit %
+D-1001,Harborview Family Medicine,Succession,2026-02-14,310000,100
+D-1002,Cedar Park Internal Medicine,Transition,2026-03-02,185000,100
+D-1003,Lakeshore Primary Care,Full Build,2026-03-27,420000,50
+D-1004,Northgate Medical Group,Succession,2026-05-11,240000,100
+D-1005,Ridgeline Health Partners,Transition,2026-06-08,415000,100
+D-1006,Summit Family Care,Full Build,2026-07-19,265000,100
+D-1007,Baywood Clinic,Succession,2026-09-01,560000,100
+D-1008,Elmwood Associates,Referral,2026-09-22,20000,100
+D-1009,Fairhaven Physicians,Referral,2026-10-06,20000,100
+D-1010,Oakmont Medical,Referral,2026-11-03,20000,100
+D-1011,Willow Creek Family,Referral,2026-11-20,12000,50`;
+
 let pass = 0, fail = 0;
 const near = (a, b, tol = 0.005) => Math.abs(a - b) <= tol;
 function check(name, actual, expected) {
@@ -15,7 +91,7 @@ function check(name, actual, expected) {
   if (ok) { pass++; console.log('  PASS  ' + name + '  = ' + actual); }
   else { fail++; console.log('  FAIL  ' + name + '  expected ' + expected + ', got ' + actual); }
 }
-const sample = () => csvToData(SAMPLE_CSV, 'sample-deals.csv');
+const sample = () => csvToData(MDVIP_CSV, 'mdvip-deals.csv');
 const byId = r => { const o = {}; r.detail.forEach(x => { o[x.row['Deal ID']] = x; }); return o; };
 
 /* Isolated cumulative fixture: $15,000 bands at 2 / 4 / 6 / 8 percent. */
@@ -23,7 +99,7 @@ const BANDS = [{ from: 0, to: 15000, rate: 2 }, { from: 15000, to: 30000, rate: 
                { from: 30000, to: 45000, rate: 6 }, { from: 45000, to: null, rate: 8 }];
 function cumPlan(mode, opts) {
   opts = opts || {};
-  const p = defaultPlan();
+  const p = mdvipPlan();
   p.components = []; p.modifiers = [];
   p.rateTables = [{ id: 'rt', name: 'ACV', basis: 'cumulative', mode,
                     poolBy: opts.poolBy || '', openingBalance: opts.opening || 0, tiers: BANDS }];
@@ -53,7 +129,7 @@ check('duplicate headers disambiguated', csvToData('A,A\n1,2').columns.join('|')
 
 /* ---- 2. per-deal rules, hand-computed -------------------------------- */
 console.log('\n2. Sample plan — per-deal rules');
-let r = calculate(defaultPlan(), sample());
+let r = calculate(mdvipPlan(), sample());
 let D = byId(r);
 check('D-1001 succession marginal 250k@4 + 60k@5', D['D-1001'].commission, 13000);
 check('D-1002 transition cliff 185k x 3%', D['D-1002'].commission, 5550);
@@ -185,12 +261,12 @@ check('table with no bands pays nothing', r.dealGross, 0);
 
 /* ---- 9. modifier scoping --------------------------------------------- */
 console.log('\n9. Modifier scope');
-let p = defaultPlan(); p.modifiers[0].appliesTo = 'quota';
+let p = mdvipPlan(); p.modifiers[0].appliesTo = 'quota';
 r = calculate(p, sample());
 check('deal side untouched', r.dealTotal, 83830);
 check('quota side x0.9', r.quotaTotal, 39472 * 0.9);
 
-p = defaultPlan(); p.modifiers[0].appliesTo = 'deals';
+p = mdvipPlan(); p.modifiers[0].appliesTo = 'deals';
 r = calculate(p, sample());
 check('deal side x0.9', r.dealTotal, 83830 * 0.9);
 check('quota side untouched', r.quotaTotal, 39472);
@@ -199,21 +275,21 @@ check('gross + gross = subtotal', r.dealGross + r.quotaGross, r.subtotal);
 
 /* ---- 10. rule ordering and enablement -------------------------------- */
 console.log('\n10. Rule ordering and enablement');
-p = defaultPlan();
+p = mdvipPlan();
 p.rules.unshift({ id: 'r0', name: 'Flat everything', enabled: true, match: 'all', conditions: [],
   action: { type: 'fixed', measureField: 'Deal Value', amount: 100, percent: 0, rateTableId: '', creditPctField: '' } });
 r = calculate(p, sample());
 check('catch-all first swallows all 11 deals', r.dealGross, 1100);
 check('cumulative pool never forms', r.pools.length, 0);
 
-p = defaultPlan();
+p = mdvipPlan();
 p.rules[0].enabled = false;                                   // disable Succession
 p.rules[3].action = { type: 'percent', measureField: 'Deal Value', percent: 2, creditPctField: 'Credit %' };
 r = calculate(p, sample());
 check('disabled rule falls through to the catch-all',
   byId(r)['D-1001'].commission, 310000 * 0.02);
 
-p = defaultPlan(); p.rules.pop();                             // remove catch-all
+p = mdvipPlan(); p.rules.pop();                             // remove catch-all
 r = calculate(p, sample());
 check('four referral deals now unmatched', r.unmatched, 4);
 check('unmatched pay nothing', r.dealGross, 80350);
@@ -238,7 +314,7 @@ check('between outside', t('between', 'Value', '300000, 400000'), false);
 check('blank', t('blank', 'Rep', ''), true);
 check('notblank', t('notblank', 'Type', ''), true);
 
-p = defaultPlan();
+p = mdvipPlan();
 p.rules[0].conditions = [{ field: 'Deal Type', op: 'is', value: 'Succession' },
                          { field: 'Deal Value', op: 'gte', value: '500000' }];
 r = calculate(p, sample());
@@ -265,13 +341,13 @@ check('walkBands is order-agnostic over a split range',
 /* ---- 13. credit split and exclusions --------------------------------- */
 console.log('\n13. Credit split and exclusions');
 let dd = sample(); dd.rows[0]['Credit %'] = '25';
-r = calculate(defaultPlan(), dd);
+r = calculate(mdvipPlan(), dd);
 check('25% credit on a per-deal rule', r.detail[0].commission, 3250);
 dd = sample(); dd.rows[0]['Credit %'] = '';
-r = calculate(defaultPlan(), dd);
+r = calculate(mdvipPlan(), dd);
 check('blank credit treated as 100%', r.detail[0].commission, 13000);
 
-p = defaultPlan();
+p = mdvipPlan();
 p.rules[0].action = { type: 'exclude', measureField: 'Deal Value', creditPctField: '' };
 r = calculate(p, sample());
 check('excluded deals pay 0',
@@ -280,7 +356,7 @@ check('excluded removed from total', r.dealGross, 83830 - 13000 - 9600 - 26100);
 
 /* ---- 14. proration --------------------------------------------------- */
 console.log('\n14. Proration');
-p = defaultPlan(); p.payee.startDate = '2026-07-01';
+p = mdvipPlan(); p.payee.startDate = '2026-07-01';
 r = calculate(p, sample());
 check('days on plan', r.daysOnPlan, 184);
 check('proration', r.proration, 184 / 365);
@@ -294,30 +370,30 @@ check('proration off -> factor 1', r.proration, 1);
 
 /* ---- 15. thresholds, empty states, missing columns ------------------- */
 console.log('\n15. Thresholds, empty states, missing columns');
-p = defaultPlan(); p.components[0].payout.thresholdPct = 100;
+p = mdvipPlan(); p.components[0].payout.thresholdPct = 100;
 r = calculate(p, sample());
 check('98.68% below 100% threshold pays 0', r.quotaGross, 0);
 
-p = defaultPlan(); p.components = [];
+p = mdvipPlan(); p.components = [];
 r = calculate(p, sample());
 check('no components -> deals only', r.variable, 83830 * 0.9);
 
-p = defaultPlan(); p.rules = [];
+p = mdvipPlan(); p.rules = [];
 r = calculate(p, sample());
 check('no rules -> every deal unmatched', r.unmatched, 11);
 check('deal total 0', r.dealGross, 0);
 check('no pools form', r.pools.length, 0);
 
-r = calculate(defaultPlan(), { columns: [], rows: [] });
+r = calculate(mdvipPlan(), { columns: [], rows: [] });
 check('no deal data -> quota only', r.dealGross, 0);
 check('summed component reads 0', r.components[0].actual, 0);
 
-p = defaultPlan(); p.components[0].actualSource = 'manual'; p.components[0].actual = 2500000;
+p = mdvipPlan(); p.components[0].actualSource = 'manual'; p.components[0].actual = 2500000;
 r = calculate(p, { columns: [], rows: [] });
 check('manual actual at 100% pays full target', r.quotaGross, 40000);
 
 const alt = csvToData('Opportunity,Segment,Booking Amount\nOPP-1,Enterprise,1200000', 'alt.csv');
-r = calculate(defaultPlan(), alt);
+r = calculate(mdvipPlan(), alt);
 check('warns when referenced columns are absent',
   r.warnings.some(w => w.includes('not found in the loaded data')), true);
 check('names the missing measure column', r.warnings.some(w => w.includes('"Deal Value"')), true);
@@ -325,7 +401,7 @@ check('missing columns measure zero', r.dealGross, 0);
 
 /* ---- 16. audit integrity --------------------------------------------- */
 console.log('\n16. Audit trail');
-r = calculate(defaultPlan(), sample());
+r = calculate(mdvipPlan(), sample());
 const steps = r.audit.filter(s => !s.group);
 check('every step carries a formula', steps.every(s => s.formula && s.display), true);
 check('numbered sequentially', steps.every((s, i) => s.n === i + 1), true);
@@ -354,7 +430,7 @@ check('numbers still compare as numbers', td('gt', 'n', '200000'), true);
 check('date vs non-date falls back to numeric',
   testCondition({ d: '2026-08-12' }, { field: 'd', op: 'gt', value: 'abc' }), true);
 
-p = defaultPlan();
+p = mdvipPlan();
 p.rules[0].conditions = [{ field: 'Close Date', op: 'gt', value: '2026-08-31' }];
 r = calculate(p, sample());
 check('date filter selects exactly the post-August deals (incl. Sep 1)', r.byRule[0].count, 5);
@@ -379,12 +455,12 @@ p.rules[0].action.uplift = 1.5;
 r = calculate(p, upRows);
 check('constant and column multiply together', r.pools[0].items[1].credited, 20000 * 1.5 * 2 * 0.5);
 
-p = defaultPlan();
+p = mdvipPlan();
 p.rules[0].action.uplift = 2;                       // Succession deals doubled
 r = calculate(p, sample());
 check('uplift on a per-deal marginal table rebands the deal',
   byId(r)['D-1004'].commission, 250000 * 0.04 + 230000 * 0.05);
-p = defaultPlan(); p.rules[3].action = { type: 'percent', measureField: 'Deal Value', percent: 10, uplift: 0.5, creditPctField: '' };
+p = mdvipPlan(); p.rules[3].action = { type: 'percent', measureField: 'Deal Value', percent: 10, uplift: 0.5, creditPctField: '' };
 r = calculate(p, sample());
 check('uplift works on a percent action', byId(r)['D-1008'].commission, 20000 * 0.5 * 0.10);
 
@@ -435,61 +511,52 @@ r = calculate(cumPlan('marginal'), negDeal);
 check('a negative row on a normal rule warns instead of silently paying 0',
   r.warnings.some(w => w.includes('negative amount')), true);
 
-/* ---- 20. end-to-end regression: the screening exercise ---------------- */
-console.log('\n20. End-to-end — FY26 AE plan, August close');
-const exCsv = `Opp ID,Deal Type,Term Months,Software ARR,Close Date,Credit %,Paid Rate
-OPP-10412,New Business,24,180000,2026-08-12,100,
-OPP-10419,Expansion,12,95000,2026-08-18,100,
-OPP-10423,New Business,12,120000,2026-08-05,100,
-OPP-10430,Renewal,12,150000,2026-08-22,100,
-OPP-10437,Renewal,24,200000,2026-08-09,100,
-OPP-10441,New Business,12,160000,2026-08-14,60,
-OPP-10455,New Business,12,140000,2026-09-03,100,
-OPP-09981,Clawback,12,40000,2026-08-21,100,10`;
-const bandAct = o => Object.assign({ type: 'rateTable', measureField: 'Software ARR', rateTableId: 'rt-ytd',
-                                     uplift: 1, upliftField: '', creditPctField: 'Credit %' }, o);
-const exPlan = {
-  version: 3, meta: { planName: 'FY26', periodStart: '2026-01-01', periodEnd: '2026-12-31' },
-  payee: { name: 'Jordan Kim', targetIncentive: 0, prorate: false, startDate: '', endDate: '' },
-  accrual: { sortField: 'Close Date', direction: 'asc' },
-  rateTables: [{ id: 'rt-ytd', name: 'FY26 YTD', basis: 'cumulative', mode: 'marginal', poolBy: '',
-                 openingBalance: 650000,
-                 tiers: [{ from: 0, to: 500000, rate: 0 }, { from: 500000, to: 1000000, rate: 10 },
-                         { from: 1000000, to: 1500000, rate: 15 }, { from: 1500000, to: null, rate: 20 }] }],
-  rules: [
-    { id: 'r0', name: 'Clawback', enabled: true, match: 'all',
-      conditions: [{ field: 'Deal Type', op: 'is', value: 'Clawback' }],
-      action: { type: 'clawback', measureField: 'Software ARR', clawbackRateField: 'Paid Rate',
-                clawbackRate: 0, reducesBalance: false, creditPctField: 'Credit %' } },
-    { id: 'r1', name: 'Next period', enabled: true, match: 'all',
-      conditions: [{ field: 'Close Date', op: 'gt', value: '2026-08-31' }],
-      action: { type: 'exclude', measureField: 'Software ARR', creditPctField: '' } },
-    { id: 'r2', name: 'Multi-year New Business', enabled: true, match: 'all',
-      conditions: [{ field: 'Deal Type', op: 'is', value: 'New Business' },
-                   { field: 'Term Months', op: 'gt', value: '24' }], action: bandAct({ uplift: 1.15 }) },
-    { id: 'r3', name: 'Multi-year Renewal', enabled: true, match: 'all',
-      conditions: [{ field: 'Deal Type', op: 'is', value: 'Renewal' },
-                   { field: 'Term Months', op: 'gt', value: '18' }], action: bandAct({ uplift: 1.15 }) },
-    { id: 'r4', name: 'Standard', enabled: true, match: 'all', conditions: [], action: bandAct({}) }],
-  components: [], modifiers: []
-};
-r = calculate(exPlan, csvToData(exCsv, 'ex.csv'));
+/* ---- 20. the SHIPPED default plan, end to end ------------------------ */
+console.log('\n20. Shipped default — FY26 AE (Rancher 2), August 2026 close');
+r = calculate(defaultPlan(), csvToData(SAMPLE_CSV, 'sample-deals.csv'));
 const E = {}; r.detail.forEach(x => { E[x.row['Opp ID']] = x; });
-check('24-month New Business is NOT multi-year (needs > 24)', E['OPP-10412'].uplift, 1);
-check('24-month Renewal IS multi-year (needs > 18)', E['OPP-10437'].uplift, 1.15);
-check('multi-year renewal credits 230,000', E['OPP-10437'].measure, 230000);
-check('PS fees excluded by measuring Software ARR', E['OPP-10423'].measure, 120000);
+
+console.log('   Part A — creditable ARR by deal');
+check('24-month New Business is NOT multi-year (policy needs > 24)', E['OPP-10412'].uplift, 1);
+check('  credits 180,000 unchanged', E['OPP-10412'].measure, 180000);
+check('12-month Expansion is not multi-year', E['OPP-10419'].uplift, 1);
+check('PS fees excluded — measures Software ARR, not TCV', E['OPP-10423'].measure, 120000);
+check('  TCV on the row is 140,000', num(E['OPP-10423'].row['TCV']), 140000);
+check('12-month Renewal is not multi-year', E['OPP-10430'].uplift, 1);
+check('24-month Renewal IS multi-year (policy needs > 18)', E['OPP-10437'].uplift, 1.15);
+check('  1.15x uplift credits 230,000', E['OPP-10437'].measure, 230000);
 check('overlay split credits 60%', E['OPP-10441'].measure * E['OPP-10441'].credit / 100, 96000);
-check('September close excluded from August', E['OPP-10455'].excluded, true);
+check('Sept 3 close excluded from the August period', E['OPP-10455'].excluded, true);
 check('total creditable ARR', r.pools[0].volume, 871000);
-check('YTD balance', r.pools[0].balance, 1521000);
+
+console.log('   Part B — YTD attainment and gross commission');
+check('prior YTD carried in', r.pools[0].opening, 650000);
+check('YTD creditable ARR', r.pools[0].balance, 1521000);
 check('YTD attainment 152.1%', r.pools[0].balance / 1000000 * 100, 152.1);
-check('August gross commission', r.pools[0].commission, 114200);
-check('clawback at the originally paid rate', E['OPP-09981'].commission, -4000);
-check('net August payout', r.dealGross, 110200);
+check('band 500k-1M at 10%', r.pools[0].bands.find(b => b.rate === 10).commission, 35000);
+check('band 1M-1.5M at 15%', r.pools[0].bands.find(b => b.rate === 15).commission, 75000);
+check('band above 1.5M at 20%', r.pools[0].bands.find(b => b.rate === 20).commission, 4200);
 check('decelerator band stays inert above 50%',
   r.pools[0].bands.some(b => b.rate === 0), false);
+check('August gross commission', r.pools[0].commission, 114200);
+
+console.log('   Part C — clawback and net payout');
+check('clawback at the 1.0x rate originally paid', E['OPP-09981'].commission, -4000);
+check('clawback leaves YTD credit unrestated', r.pools[0].balance, 1521000);
+check('clawback records the rate it recovered at', E['OPP-09981'].rateUsed, 10);
+check('NET AUGUST PAYOUT', r.dealGross, 110200);
+check('no quota component double-counts the curve', r.quotaGross, 0);
+check('variable equals the deal side', r.variable, 110200);
 check('no warnings', r.warnings.length, 0);
+
+console.log('   plan wiring');
+check('every rule points at a table that exists',
+  defaultPlan().rules.every(x => x.action.type !== 'rateTable' ||
+    defaultPlan().rateTables.some(rt => rt.id === x.action.rateTableId)), true);
+check('a catch-all sits at the bottom',
+  (defaultPlan().rules[defaultPlan().rules.length - 1].conditions || []).length, 0);
+check('every deal matched a rule', r.unmatched, 0);
+check('detail covers every row', r.detail.length, 8);
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
 process.exit(fail ? 1 : 0);

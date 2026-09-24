@@ -1,12 +1,9 @@
-Deal ID,Practice,Deal Type,Close Date,Deal Value,Credit %
-D-1001,Harborview Family Medicine,Succession,2026-02-14,310000,100
-D-1002,Cedar Park Internal Medicine,Transition,2026-03-02,185000,100
-D-1003,Lakeshore Primary Care,Full Build,2026-03-27,420000,50
-D-1004,Northgate Medical Group,Succession,2026-05-11,240000,100
-D-1005,Ridgeline Health Partners,Transition,2026-06-08,415000,100
-D-1006,Summit Family Care,Full Build,2026-07-19,265000,100
-D-1007,Baywood Clinic,Succession,2026-09-01,560000,100
-D-1008,Elmwood Associates,Referral,2026-09-22,20000,100
-D-1009,Fairhaven Physicians,Referral,2026-10-06,20000,100
-D-1010,Oakmont Medical,Referral,2026-11-03,20000,100
-D-1011,Willow Creek Family,Referral,2026-11-20,12000,50
+Opp ID,Account Name,Deal Type,Term Months,TCV,Software ARR,Close Date,Credit %,Paid Rate %
+OPP-10412,Acme Robotics,New Business,24,360000,180000,2026-08-12,100,
+OPP-10419,Globex Foods,Expansion,12,95000,95000,2026-08-18,100,
+OPP-10423,Initech Data,New Business,12,140000,120000,2026-08-05,100,
+OPP-10430,Umbrella Analytics,Renewal,12,150000,150000,2026-08-22,100,
+OPP-10437,Stark Data Systems,Renewal,24,200000,200000,2026-08-09,100,
+OPP-10441,Wayne Analytics,New Business,12,160000,160000,2026-08-14,60,
+OPP-10455,Hooli Insights,New Business,12,140000,140000,2026-09-03,100,
+OPP-09981,Dynamic Systems,Clawback,12,40000,40000,2026-08-21,100,10

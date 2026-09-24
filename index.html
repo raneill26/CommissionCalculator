@@ -213,10 +213,10 @@ footer .r{margin-left:auto}
   <div class="hero">
     <div class="hero-grid">
       <div>
-        <p class="eyebrow">Custom Rule-driven engine</p>
-        <h1>Single Employee<br><em>Commission Engine</em></h1>
+        <p class="eyebrow">Rule-driven commission engine</p>
+        <h1>Load the deals.<br><em>Show the math.</em></h1>
       </div>
-      <p class="lede">Upload data, define rules that route each deal to its own tables, get payout with auditable steps</p>
+      <p class="lede">Upload deal-level data, define the rules that route each deal to its own rate table, and get a payout with an audit of every step of the calculation</p>
     </div>
 
     <div class="result">
@@ -268,17 +268,17 @@ footer .r{margin-left:auto}
         <div class="f">
           <label for="targetIncentive">Variable at target</label>
           <div class="ipt"><span class="pre">$</span><input id="targetIncentive" type="number" min="0" step="1000" data-path="payee.targetIncentive" data-type="number"></div>
-          <p class="hint">Opportunity for quota-based components.</p>
+          <p class="hint" id="hint-ti">Opportunity for quota-based components</p>
         </div>
         <div class="f">
           <label for="hireDate">On plan from</label>
           <div class="ipt"><input id="hireDate" type="date" data-path="payee.startDate"></div>
-          <p class="hint">Blank = start of period.</p>
+          <p class="hint">Blank = start of period</p>
         </div>
         <div class="f">
           <label for="termDate">On plan through</label>
           <div class="ipt"><input id="termDate" type="date" data-path="payee.endDate"></div>
-          <p class="hint">Blank = end of period.</p>
+          <p class="hint">Blank = end of period</p>
         </div>
         <div class="f">
           <label for="prorate">Prorate for time on plan</label>
@@ -303,7 +303,7 @@ footer .r{margin-left:auto}
           <button class="btn sm" id="btn-clear-data">Clear</button>
         </div>
       </div>
-      <p class="sec-note">Upload a CSV where each row is one deal. The first row must be column headers. Rules below read these column names.</p>
+      <p class="sec-note">Upload a CSV where each row is a deal. The first row must be column headers. The rules below read these column names.</p>
       <input type="file" id="file-input" accept=".csv,.txt,text/csv" class="hidden">
 
       <div id="drop" class="drop">
@@ -360,10 +360,10 @@ footer .r{margin-left:auto}
           <button class="btn sm" data-add-rt="attainment">+ Attainment table</button>
         </div>
       </div>
-      <p class="sec-note">Reusable tier tables, referenced by rules and components.
-        <strong>Deal-value</strong> tables tier on the size of one deal, in isolation.
-        <strong>Cumulative</strong> tables tier on a running balance across the period — three $20k deals against $15k bands walk from the first band up to the fourth.
-        <strong>Attainment</strong> tables tier on percent-of-quota and are used by quota components.</p>
+      <p class="sec-note">Reusable tier tables, referenced by rules and components
+        <strong>Deal-value</strong> tables tier on the size of one deal, in isolation
+        <strong>Cumulative</strong> tables tier on a running balance across the period (Ex: three $20k deals against $15k bands walk from the first band up to the fourth)
+        <strong>Attainment</strong> tables tier on percent-of-quota and are used by quota components</p>
       <div id="rt-list"></div>
     </div>
   </section>
@@ -375,7 +375,7 @@ footer .r{margin-left:auto}
         <span class="num">04</span><h2>Rules</h2>
         <div class="tools"><button class="btn sm" id="btn-add-rule">+ Add rule</button></div>
       </div>
-      <p class="sec-note">Each deal is tested against these rules top to bottom and the <strong>first match wins</strong>. A rule with no conditions matches everything — keep one at the bottom as a catch-all. This is the section the agent will write for you from a plan document.</p>
+      <p class="sec-note">Each deal is tested against these rules top to bottom and the <strong>first match wins</strong>. A rule with no conditions matches everything, keep one at the bottom as a catch-all. This is the section the LLM agent will write for you from a plan document</p>
       <div id="rule-list"></div>
       <p class="warn" id="rule-warn" hidden></p>
     </div>
@@ -388,7 +388,7 @@ footer .r{margin-left:auto}
         <span class="num">05</span><h2>Quota components</h2>
         <div class="tools"><button class="btn sm" id="btn-add-comp">+ Add component</button></div>
       </div>
-      <p class="sec-note">Optional. For plans where part of the variable is earned against a quota rather than per deal. Weights are shares of the variable-at-target amount and should total 100%.</p>
+      <p class="sec-note">Optional, for plans where part of the variable is earned against a quota rather than per deal. Weights are shares of the variable-at-target amount and should total 100%</p>
       <div id="comp-list"></div>
       <p class="warn" id="weight-warn" hidden></p>
     </div>
@@ -401,7 +401,7 @@ footer .r{margin-left:auto}
         <span class="num">06</span><h2>Modifiers</h2>
         <div class="tools"><button class="btn sm" id="btn-add-mod">+ Add modifier</button></div>
       </div>
-      <p class="sec-note">Multipliers applied after everything else — quality scores, adherence ratings, manager discretion. Each can target deal commission, quota commission, or both.</p>
+      <p class="sec-note">Multipliers applied after everything else (quality scores, adherence ratings, manager discretion) Each can target deal commission, quota commission, or both</p>
       <div id="mod-list"></div>
     </div>
   </section>
@@ -410,7 +410,7 @@ footer .r{margin-left:auto}
   <section id="sec-pools">
     <div class="card">
       <div class="sec-head"><span class="num">07</span><h2>Cumulative pools</h2></div>
-      <p class="sec-note">Running balances built by the cumulative rate tables, and the band-by-band breakdown of what each one paid.</p>
+      <p class="sec-note">Running balances built by the cumulative rate tables, and the band-by-band breakdown of what each one paid</p>
       <div id="pool-list"></div>
     </div>
   </section>
@@ -436,7 +436,7 @@ footer .r{margin-left:auto}
         <span class="num">10</span><h2>Deal detail</h2>
         <div class="tools"><button class="btn sm" id="btn-copy-detail">Copy as CSV</button></div>
       </div>
-      <p class="sec-note">Every deal, the rule it matched, and the commission it produced. This is the line-level audit.</p>
+      <p class="sec-note">Every deal, the rule it matched, and the commission it produced. This is the line-level audit</p>
       <div class="tbl-scroll"><table class="data-tbl" id="detail-tbl"></table></div>
     </div>
   </section>
@@ -445,7 +445,7 @@ footer .r{margin-left:auto}
   <section>
     <div class="card">
       <div class="sec-head"><span class="num">11</span><h2>Plan definition</h2></div>
-      <p class="sec-note">The plan — period, rate tables, rules, components, modifiers — is one JSON object, separate from the deal data. This is the handoff point for the agent layer: it writes this object, the engine executes it.</p>
+      <p class="sec-note">The plan (period, rate tables, rules, components, modifiers) is one JSON object, separate from the deal data. This is the handoff point for the agent layer: it writes this object, the engine executes it</p>
       <details class="io">
         <summary>View / edit plan JSON</summary>
         <div class="body">
@@ -465,7 +465,7 @@ footer .r{margin-left:auto}
   </section>
 
   <footer>
-    <span>Scenario modelling — the signed plan document remains the source of truth.</span>
+    <span>Scenario modelling, the signed plan document remains the source of truth</span>
     <span class="r" id="foot-period"></span>
   </footer>
 </main>
@@ -550,75 +550,92 @@ const MODE_BLURB = {
 function defaultPlan() {
   return {
     version: 3,
-    meta: { planName: 'FY26 Practice Development Plan', periodStart: '2026-01-01', periodEnd: '2026-12-31' },
-    payee: { name: 'Jordan Blake', id: 'EMP-1042', startDate: '', endDate: '', prorate: true, targetIncentive: 40000 },
+    meta: { planName: 'FY26 AE (Rancher 2) — Commercial · August 2026',
+            periodStart: '2026-01-01', periodEnd: '2026-12-31' },
 
-    /* Order deals are credited in. Only matters for cumulative rate tables,
-       where the band a deal earns depends on the balance before it. */
+    /* OTE $200,000 on a 50/50 mix: base $100,000 / TTV $100,000. Base is out of
+       scope here; the TTV is what the curve below pays out at 100% of quota
+       ($1,000,000 × 10%). Recorded for reference — with no quota components,
+       commission comes entirely from the credited-ARR curve. */
+    payee: { name: 'Jordan Kim', id: '4417', startDate: '', endDate: '',
+             prorate: false, targetIncentive: 100000 },
+
+    /* A deal must be Closed Won by the last day of the fiscal month to count
+       toward it, and the band a deal earns depends on the balance before it. */
     accrual: { sortField: 'Close Date', direction: 'asc' },
 
     rateTables: [
-      { id: 'rt-succession', name: 'Succession — deal value', basis: 'value', mode: 'marginal',
-        tiers: [ { from: 0, to: 250000, rate: 4 }, { from: 250000, to: 500000, rate: 5 }, { from: 500000, to: null, rate: 6 } ] },
-      { id: 'rt-transition', name: 'Transition — deal value', basis: 'value', mode: 'cliff',
-        tiers: [ { from: 0, to: 200000, rate: 3 }, { from: 200000, to: 400000, rate: 3.5 }, { from: 400000, to: null, rate: 4 } ] },
-      { id: 'rt-fullbuild', name: 'Full Build — flat per deal', basis: 'value', mode: 'flat',
-        tiers: [ { from: 0, to: 300000, rate: 5000 }, { from: 300000, to: null, rate: 9000 } ] },
-      { id: 'rt-acv', name: 'ACV credit — cumulative', basis: 'cumulative', mode: 'marginal',
-        poolBy: '', openingBalance: 0,
-        tiers: [ { from: 0, to: 15000, rate: 2 }, { from: 15000, to: 30000, rate: 4 },
-                 { from: 30000, to: 45000, rate: 6 }, { from: 45000, to: null, rate: 8 } ] },
-      { id: 'rt-quota', name: 'Standard quota curve', basis: 'attainment', mode: 'marginal',
-        tiers: [ { from: 0, to: 100, rate: 1 }, { from: 100, to: 150, rate: 1.5 }, { from: 150, to: null, rate: 2 } ] }
+      { id: 'rt-ytd', name: 'FY26 credited ARR curve', basis: 'cumulative', mode: 'marginal',
+        poolBy: '',
+        /* YTD creditable ARR through July 2026, already calculated and paid. */
+        openingBalance: 650000,
+        tiers: [
+          /* Decelerator: while YTD attainment is under 50% of the $1M quota,
+             credited ARR earns 0%. Inert here — the year opens above it. */
+          { from: 0,       to: 500000,  rate: 0 },
+          { from: 500000,  to: 1000000, rate: 10 },   /* 0–100% of quota  · 1.0× */
+          { from: 1000000, to: 1500000, rate: 15 },   /* 100–150%         · 1.5× */
+          { from: 1500000, to: null,    rate: 20 }    /* above 150%       · 2.0× */
+        ] }
     ],
 
     rules: [
-      { id: 'r1', name: 'Succession deals', enabled: true, match: 'all',
-        conditions: [ { field: 'Deal Type', op: 'is', value: 'Succession' } ],
-        action: { type: 'rateTable', measureField: 'Deal Value', rateTableId: 'rt-succession', percent: 0, amount: 0, creditPctField: 'Credit %' } },
-      { id: 'r2', name: 'Transition deals', enabled: true, match: 'all',
-        conditions: [ { field: 'Deal Type', op: 'is', value: 'Transition' } ],
-        action: { type: 'rateTable', measureField: 'Deal Value', rateTableId: 'rt-transition', percent: 0, amount: 0, creditPctField: 'Credit %' } },
-      { id: 'r3', name: 'Full Build deals', enabled: true, match: 'all',
-        conditions: [ { field: 'Deal Type', op: 'is', value: 'Full Build' } ],
-        action: { type: 'rateTable', measureField: 'Deal Value', rateTableId: 'rt-fullbuild', percent: 0, amount: 0, creditPctField: 'Credit %' } },
-      { id: 'r4', name: 'Everything else — cumulative ACV', enabled: true, match: 'all',
+      { id: 'r-clawback', name: 'Cancelled within 90 days — clawback', enabled: true, match: 'all',
+        conditions: [ { field: 'Deal Type', op: 'is', value: 'Clawback' } ],
+        action: { type: 'clawback', measureField: 'Software ARR', rateTableId: 'rt-ytd',
+                  percent: 0, amount: 0, uplift: 1, upliftField: '',
+                  creditPctField: 'Credit %', clawbackRate: 0,
+                  clawbackRateField: 'Paid Rate %', reducesBalance: false } },
+
+      { id: 'r-next', name: 'Closed after month-end — next period', enabled: true, match: 'all',
+        conditions: [ { field: 'Close Date', op: 'gt', value: '2026-08-31' } ],
+        action: { type: 'exclude', measureField: 'Software ARR', creditPctField: '' } },
+
+      { id: 'r-my-new', name: 'Multi-year New Business (term > 24 months)', enabled: true, match: 'all',
+        conditions: [ { field: 'Deal Type', op: 'is', value: 'New Business' },
+                      { field: 'Term Months', op: 'gt', value: '24' } ],
+        action: { type: 'rateTable', measureField: 'Software ARR', rateTableId: 'rt-ytd',
+                  percent: 0, amount: 0, uplift: 1.15, upliftField: '',
+                  creditPctField: 'Credit %' } },
+
+      { id: 'r-my-ren', name: 'Multi-year Renewal (term > 18 months)', enabled: true, match: 'all',
+        conditions: [ { field: 'Deal Type', op: 'is', value: 'Renewal' },
+                      { field: 'Term Months', op: 'gt', value: '18' } ],
+        action: { type: 'rateTable', measureField: 'Software ARR', rateTableId: 'rt-ytd',
+                  percent: 0, amount: 0, uplift: 1.15, upliftField: '',
+                  creditPctField: 'Credit %' } },
+
+      { id: 'r-standard', name: 'Standard credit', enabled: true, match: 'all',
         conditions: [],
-        action: { type: 'rateTable', measureField: 'Deal Value', rateTableId: 'rt-acv', percent: 0, amount: 0, creditPctField: 'Credit %' } }
+        action: { type: 'rateTable', measureField: 'Software ARR', rateTableId: 'rt-ytd',
+                  percent: 0, amount: 0, uplift: 1, upliftField: '',
+                  creditPctField: 'Credit %' } }
     ],
 
-    components: [
-      { id: 'c1', name: 'Annual production', weight: 100, quota: 2500000,
-        actualSource: 'sum', actualField: 'Deal Value', actual: 0, prorateQuota: true,
-        payout: { rateTableId: 'rt-quota', thresholdPct: 0, capPct: 250 } }
-    ],
+    /* Commission is earned per deal against the curve above, so there is no
+       weighted quota component. Add one here for a plan that splits the
+       variable across components. */
+    components: [],
 
-    modifiers: [
-      { id: 'm1', name: 'Adherence rating', appliesTo: 'all', selected: 1,
-        options: [
-          { label: '5 — Excellent', factor: 1 },
-          { label: '4 — Good', factor: 0.9 },
-          { label: '3 — Satisfactory', factor: 0.75 },
-          { label: '2 — Needs improvement', factor: 0.5 },
-          { label: '1 — Unsatisfactory', factor: 0.25 }
-        ] }
-    ]
+    /* No SPIFF or quality modifier in scope for this plan. */
+    modifiers: []
   };
 }
 
+/* Salesforce Closed Won export for August 2026, plus the June booking that was
+   cancelled inside the 90-day window. "Software ARR" is recurring subscription
+   value only — one-time fees such as professional services sit in TCV and are
+   excluded from ARR credit, which is why Initech's two columns differ. */
 const SAMPLE_CSV =
-`Deal ID,Practice,Deal Type,Close Date,Deal Value,Credit %
-D-1001,Harborview Family Medicine,Succession,2026-02-14,310000,100
-D-1002,Cedar Park Internal Medicine,Transition,2026-03-02,185000,100
-D-1003,Lakeshore Primary Care,Full Build,2026-03-27,420000,50
-D-1004,Northgate Medical Group,Succession,2026-05-11,240000,100
-D-1005,Ridgeline Health Partners,Transition,2026-06-08,415000,100
-D-1006,Summit Family Care,Full Build,2026-07-19,265000,100
-D-1007,Baywood Clinic,Succession,2026-09-01,560000,100
-D-1008,Elmwood Associates,Referral,2026-09-22,20000,100
-D-1009,Fairhaven Physicians,Referral,2026-10-06,20000,100
-D-1010,Oakmont Medical,Referral,2026-11-03,20000,100
-D-1011,Willow Creek Family,Referral,2026-11-20,12000,50`;
+`Opp ID,Account Name,Deal Type,Term Months,TCV,Software ARR,Close Date,Credit %,Paid Rate %
+OPP-10412,Acme Robotics,New Business,24,360000,180000,2026-08-12,100,
+OPP-10419,Globex Foods,Expansion,12,95000,95000,2026-08-18,100,
+OPP-10423,Initech Data,New Business,12,140000,120000,2026-08-05,100,
+OPP-10430,Umbrella Analytics,Renewal,12,150000,150000,2026-08-22,100,
+OPP-10437,Stark Data Systems,Renewal,24,200000,200000,2026-08-09,100,
+OPP-10441,Wayne Analytics,New Business,12,160000,160000,2026-08-14,60,
+OPP-10455,Hooli Insights,New Business,12,140000,140000,2026-09-03,100,
+OPP-09981,Dynamic Systems,Clawback,12,40000,40000,2026-08-21,100,10`;
 
 let PLAN = defaultPlan();
 let DATA = { name: '', columns: [], rows: [] };
@@ -1038,7 +1055,8 @@ function calculate(plan, data) {
         note += '  ·  balance reduced to ' + money0(pool.balance);
       }
       detail[i] = { i, row, ruleId: rule.id, ruleName: rule.name, rawMeasure, uplift,
-                    measure: -amount, credit, note, commission, clawback: true, poolKey };
+                    measure: -amount, credit, note, commission, clawback: true,
+                    rateUsed: rate, poolKey };
       return;
     }
 
@@ -1615,6 +1633,9 @@ function renderOutputs() {
   if (r.prorate && r.proration < 1) bits.push(pct(r.proration * 100, 1) + ' of period');
   $('#out-summary').textContent = bits.join(' · ') || 'Load deal data or add a quota component to begin';
 
+  $('#hint-ti').textContent = (PLAN.components || []).length
+    ? 'Opportunity for quota-based components.'
+    : 'Reference only — this plan pays from the deal rules.';
   $('#hint-prorate').textContent = r.prorate
     ? r.daysOnPlan + ' of ' + r.periodDays + ' days = ' + pct(r.proration * 100, 1) : 'Full period credited.';
   $('#foot-period').textContent = 'Period: ' + fmtDate(PLAN.meta.periodStart) + ' – ' + fmtDate(PLAN.meta.periodEnd);
@@ -1678,15 +1699,30 @@ function renderOutputs() {
       if (!s.count) return;
       const rule = r.rules[i], a = rule.action || {};
       const rtRef = (PLAN.rateTables || []).find(x => x.id === a.rateTableId);
-      const pool = rtRef && rtRef.basis === 'cumulative' ? r.pools.find(pl => pl.rt.id === rtRef.id) : null;
+      const isClawback = a.type === 'clawback';
+      const pool = !isClawback && rtRef && rtRef.basis === 'cumulative'
+        ? r.pools.find(pl => pl.rt.id === rtRef.id) : null;
+
+      /* a clawback recovers at the rate originally paid, which may differ row
+         to row when it is read from a column */
+      let cbRate = '';
+      if (isClawback) {
+        const used = [];
+        r.detail.forEach(d => { if (d && d.ruleId === rule.id && d.rateUsed != null && used.indexOf(d.rateUsed) < 0) used.push(d.rateUsed); });
+        cbRate = used.length === 1 ? used[0] + '%' : used.length ? 'varies' : '—';
+      }
+
       const rate = a.type === 'percent' ? num(a.percent) + '%'
                  : a.type === 'fixed' ? money0(num(a.amount))
                  : a.type === 'exclude' ? '—'
+                 : isClawback ? cbRate
                  : pool ? pool.finalTier
                  : 'table';
-      const sub = pool
-        ? 'Cumulative · ' + esc(rtRef.name) + ' · balance ' + money0(pool.balance)
-        : esc(ACTIONS[a.type] || '');
+      const sub = isClawback
+        ? 'Recovered at the rate originally paid'
+        : pool
+          ? 'Cumulative · ' + esc(rtRef.name) + ' · balance ' + money0(pool.balance)
+          : esc(ACTIONS[a.type] || '');
       html += `<tr><td><strong>${esc(s.name)}</strong><div class="s2">${sub}</div></td>
                <td class="n">${s.count}</td><td class="n">${money0(s.measure)}</td><td class="n">${rate}</td><td class="n">${money(s.commission)}</td></tr>`;
     });
