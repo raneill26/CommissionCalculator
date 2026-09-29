@@ -201,10 +201,11 @@ footer .r{margin-left:auto}
 <header>
   <div class="wrap hd">
     <div class="brand"><span class="mark">%</span> Commission Calculator</div>
-    <button class="btn sm" id="btn-sample">Load sample</button>
+    <button class="btn sm" id="btn-sample">Load example</button>
     <button class="btn sm" id="btn-reset">Reset</button>
-    <button class="btn sm" id="btn-copy-audit">Copy audit</button>
-    <button class="btn sm blue" id="btn-export">Export plan</button>
+    <button class="btn sm" id="btn-copy-audit">Copy the math</button>
+    <!-- hidden for now: remove the "hidden" class to bring it back -->
+    <button class="btn sm blue hidden" id="btn-export">Export plan</button>
   </div>
 </header>
 
@@ -221,23 +222,23 @@ footer .r{margin-left:auto}
 
     <div class="result">
       <div>
-        <p class="lbl">Total variable earnings</p>
+        <p class="lbl">Your payout</p>
         <p class="big" id="out-variable">$0</p>
         <p class="sub" id="out-summary">&nbsp;</p>
       </div>
       <div class="result-side">
-        <div><p class="lbl">Deal-based commission</p><p class="val" id="out-deals">$0</p></div>
-        <div><p class="lbl">Quota-based commission</p><p class="val" id="out-quota">$0</p></div>
-        <div><p class="lbl">Deals processed</p><p class="val" id="out-count">0</p></div>
+        <div><p class="lbl">Commission earned</p><p class="val" id="out-deals">$0</p></div>
+        <div><p class="lbl">Clawbacks</p><p class="val" id="out-quota">$0</p></div>
+        <div><p class="lbl" id="lbl-count">Deals counted</p><p class="val" id="out-count">0</p></div>
       </div>
     </div>
   </div>
 
-  <!-- 01 PLAN SETUP -->
+  <!-- 01 YOUR PLAN -->
   <section>
     <div class="card">
-      <div class="sec-head"><span class="num">01</span><h2>Plan setup</h2></div>
-      <p class="sec-note">Period, payee and the variable opportunity at target. Everything recalculates as you type.</p>
+      <div class="sec-head"><span class="num">01</span><h2>Your plan</h2></div>
+      <p class="sec-note">Who this statement is for and the period it covers. Everything updates as you type</p>
 
       <div class="fields">
         <div class="f">
@@ -258,7 +259,7 @@ footer .r{margin-left:auto}
 
       <div class="fields">
         <div class="f">
-          <label for="payeeName">Payee</label>
+          <label for="payeeName">Rep</label>
           <div class="ipt"><input id="payeeName" type="text" data-path="payee.name" placeholder="Walter White"></div>
         </div>
         <div class="f">
@@ -266,21 +267,27 @@ footer .r{margin-left:auto}
           <div class="ipt"><input id="payeeId" type="text" data-path="payee.id" placeholder="EMP-1042"></div>
         </div>
         <div class="f">
+          <label for="annualQuota">Annual quota</label>
+          <div class="ipt"><span class="pre">$</span><input id="annualQuota" type="number" min="0" step="10000" data-path="payee.annualQuota" data-type="number"></div>
+          <p class="hint">Used to show your % of quota</p>
+        </div>
+        <!-- hidden for now: remove the "hidden" class to bring it back -->
+        <div class="f hidden">
           <label for="targetIncentive">Variable at target</label>
           <div class="ipt"><span class="pre">$</span><input id="targetIncentive" type="number" min="0" step="1000" data-path="payee.targetIncentive" data-type="number"></div>
           <p class="hint" id="hint-ti">Opportunity for quota-based components</p>
         </div>
-        <div class="f">
+        <div class="f hidden">
           <label for="hireDate">On plan from</label>
           <div class="ipt"><input id="hireDate" type="date" data-path="payee.startDate"></div>
           <p class="hint">Blank = start of period</p>
         </div>
-        <div class="f">
+        <div class="f hidden">
           <label for="termDate">On plan through</label>
           <div class="ipt"><input id="termDate" type="date" data-path="payee.endDate"></div>
           <p class="hint">Blank = end of period</p>
         </div>
-        <div class="f">
+        <div class="f hidden">
           <label for="prorate">Prorate for time on plan</label>
           <select id="prorate" class="bare" data-path="payee.prorate" data-type="bool">
             <option value="true">Yes — prorate target &amp; quota</option>
@@ -292,18 +299,18 @@ footer .r{margin-left:auto}
     </div>
   </section>
 
-  <!-- 02 DEAL DATA -->
+  <!-- 02 YOUR DEALS -->
   <section>
     <div class="card">
       <div class="sec-head">
-        <span class="num">02</span><h2>Deal data</h2>
+        <span class="num">02</span><h2>Your deals</h2>
         <div class="tools">
           <button class="btn sm" id="btn-paste">Paste CSV</button>
           <button class="btn sm" id="btn-pick">Choose file</button>
           <button class="btn sm" id="btn-clear-data">Clear</button>
         </div>
       </div>
-      <p class="sec-note">Upload a CSV where each row is a deal. The first row must be column headers. The rules below read these column names.</p>
+      <p class="sec-note">Upload a spreadsheet saved as CSV, one deal per row. The first row must be the column names, which the rules below use</p>
       <input type="file" id="file-input" accept=".csv,.txt,text/csv" class="hidden">
 
       <div id="drop" class="drop">
@@ -319,9 +326,9 @@ footer .r{margin-left:auto}
         <div style="margin-top:12px" id="data-cols"></div>
         <div class="fields" style="margin-top:16px">
           <div class="f">
-            <label>Credit deals in order of</label>
+            <label>Count deals in this order</label>
             <select class="bare" id="accrual-field" data-path="accrual.sortField"></select>
-            <p class="hint">Sets the sequence for cumulative balances.</p>
+            <p class="hint">Deals add to your year-to-date total in this order</p>
           </div>
           <div class="f">
             <label>Direction</label>
@@ -332,7 +339,7 @@ footer .r{margin-left:auto}
           </div>
         </div>
         <details class="io" open>
-          <summary>Preview rows</summary>
+          <summary>Preview deals</summary>
           <div class="body">
             <div class="tbl-scroll"><table class="data-tbl" id="data-preview"></table></div>
           </div>
@@ -392,43 +399,43 @@ footer .r{margin-left:auto}
     </div>
   </section>
 
-  <!-- 03 RATE TABLES -->
+  <!-- 04 COMMISSION RATES -->
   <section>
     <div class="card">
       <div class="sec-head">
-        <span class="num">04</span><h2>Rate tables</h2>
+        <span class="num">04</span><h2>Commission rates</h2>
         <div class="tools">
-          <button class="btn sm" data-add-rt="value">+ Deal-value table</button>
-          <button class="btn sm" data-add-rt="cumulative">+ Cumulative table</button>
-          <button class="btn sm" data-add-rt="attainment">+ Attainment table</button>
+          <button class="btn sm" data-add-rt="value">+ Per-deal rates</button>
+          <button class="btn sm" data-add-rt="cumulative">+ Year-to-date rates</button>
+          <button class="btn sm hidden" data-add-rt="attainment">+ Attainment table</button>
         </div>
       </div>
-      <p class="sec-note">Reusable tier tables, referenced by rules and components
-        <strong>Deal-value</strong> tables tier on the size of one deal, in isolation
-        <strong>Cumulative</strong> tables tier on a running balance across the period (Ex: three $20k deals against $15k bands walk from the first band up to the fourth)
-        <strong>Attainment</strong> tables tier on percent-of-quota and are used by quota components</p>
+      <p class="sec-note">The rates your deals are paid at, set in tiers
+        <strong>Per-deal</strong> rates look at one deal on its own
+        <strong>Year-to-date</strong> rates look at everything you have closed so far this year, so your rate goes up as your total grows (Ex: once you pass $1,000,000 year to date, new deals pay 15% instead of 10%)</p>
       <div id="rt-list"></div>
     </div>
   </section>
 
-  <!-- 04 RULES -->
+  <!-- 05 HOW EACH DEAL COUNTS -->
   <section>
     <div class="card">
       <div class="sec-head">
-        <span class="num">05</span><h2>Rules</h2>
+        <span class="num">05</span><h2>How each deal counts</h2>
         <div class="tools"><button class="btn sm" id="btn-add-rule">+ Add rule</button></div>
       </div>
-      <p class="sec-note">Each deal is tested against these rules top to bottom and the <strong>first match wins</strong>. A rule with no conditions matches everything, keep one at the bottom as a catch-all. This is the section the LLM agent will write for you from a plan document</p>
+      <p class="sec-note">Each deal is checked against these rules from top to bottom, and the <strong>first rule that fits</strong> decides how it is paid. A rule with no conditions fits every deal, keep one at the bottom as a catch-all. This is the section the AI will write for you from a plan document</p>
       <div id="rule-list"></div>
       <p class="warn" id="rule-warn" hidden></p>
     </div>
   </section>
 
-  <!-- 05 QUOTA COMPONENTS -->
-  <section>
+  <!-- QUOTA COMPONENTS -->
+  <!-- hidden for now: remove the "hidden" class to bring it back -->
+  <section class="hidden">
     <div class="card">
       <div class="sec-head">
-        <span class="num">06</span><h2>Quota components</h2>
+        <span class="num">&middot;</span><h2>Quota components</h2>
         <div class="tools"><button class="btn sm" id="btn-add-comp">+ Add component</button></div>
       </div>
       <p class="sec-note">Optional, for plans where part of the variable is earned against a quota rather than per deal. Weights are shares of the variable-at-target amount and should total 100%</p>
@@ -437,11 +444,12 @@ footer .r{margin-left:auto}
     </div>
   </section>
 
-  <!-- 06 MODIFIERS -->
-  <section>
+  <!-- MODIFIERS -->
+  <!-- hidden for now: remove the "hidden" class to bring it back -->
+  <section class="hidden">
     <div class="card">
       <div class="sec-head">
-        <span class="num">07</span><h2>Modifiers</h2>
+        <span class="num">&middot;</span><h2>Modifiers</h2>
         <div class="tools"><button class="btn sm" id="btn-add-mod">+ Add modifier</button></div>
       </div>
       <p class="sec-note">Multipliers applied after everything else (quality scores, adherence ratings, manager discretion) Each can target deal commission, quota commission, or both</p>
@@ -449,45 +457,46 @@ footer .r{margin-left:auto}
     </div>
   </section>
 
-  <!-- 07 CUMULATIVE POOLS -->
+  <!-- 06 YOUR YEAR-TO-DATE TOTAL -->
   <section id="sec-pools">
     <div class="card">
-      <div class="sec-head"><span class="num">08</span><h2>Cumulative pools</h2></div>
-      <p class="sec-note">Running balances built by the cumulative rate tables, and the band-by-band breakdown of what each one paid</p>
+      <div class="sec-head"><span class="num">06</span><h2>Your year-to-date total</h2></div>
+      <p class="sec-note">How this period's deals add to your running total for the year, and what each tier paid</p>
       <div id="pool-list"></div>
     </div>
   </section>
 
-  <!-- 08 / 09 STATEMENT + AUDIT -->
+  <!-- 07 / 08 STATEMENT + STEP-BY-STEP MATH -->
   <section>
     <div class="grid-2">
       <div class="card">
-        <div class="sec-head"><span class="num">09</span><h2>Commission statement</h2></div>
+        <div class="sec-head"><span class="num">07</span><h2>Your commission statement</h2></div>
         <div class="tbl-scroll"><table class="stmt" id="stmt"></table></div>
       </div>
       <div class="card">
-        <div class="sec-head"><span class="num">10</span><h2>Audit trail</h2></div>
+        <div class="sec-head"><span class="num">08</span><h2>Step-by-step math</h2></div>
         <div id="audit"></div>
       </div>
     </div>
   </section>
 
-  <!-- 10 DEAL DETAIL -->
+  <!-- 09 DEAL-BY-DEAL BREAKDOWN -->
   <section id="sec-detail">
     <div class="card">
       <div class="sec-head">
-        <span class="num">11</span><h2>Deal detail</h2>
+        <span class="num">09</span><h2>Deal-by-deal breakdown</h2>
         <div class="tools"><button class="btn sm" id="btn-copy-detail">Copy as CSV</button></div>
       </div>
-      <p class="sec-note">Every deal, the rule it matched, and the commission it produced. This is the line-level audit</p>
+      <p class="sec-note">Every deal, how it was counted, and the commission it earned. Start here to explain any single deal</p>
       <div class="tbl-scroll"><table class="data-tbl" id="detail-tbl"></table></div>
     </div>
   </section>
 
-  <!-- 10 PLAN JSON -->
-  <section>
+  <!-- PLAN DEFINITION (JSON) -->
+  <!-- hidden for now: remove the "hidden" class to bring it back -->
+  <section class="hidden">
     <div class="card">
-      <div class="sec-head"><span class="num">12</span><h2>Plan definition</h2></div>
+      <div class="sec-head"><span class="num">&middot;</span><h2>Plan definition</h2></div>
       <p class="sec-note">The plan (period, rate tables, rules, components, modifiers) is one JSON object, separate from the deal data. This is the handoff point for the agent layer: it writes this object, the engine executes it</p>
       <details class="io">
         <summary>View / edit plan JSON</summary>
@@ -546,11 +555,11 @@ const OPS = {
 };
 
 const ACTIONS = {
-  rateTable: 'Apply a rate table',
-  percent:   'Pay a flat percent of the measure',
+  rateTable: 'Pay using commission rates',
+  percent:   'Pay a flat percent',
   fixed:     'Pay a fixed amount per deal',
-  clawback:  'Claw back commission already paid',
-  exclude:   'Pay nothing (exclude the deal)'
+  clawback:  'Take back commission already paid',
+  exclude:   'Don’t count this deal'
 };
 
 /* Column headers for a rate table's tier grid, by basis + mode. */
@@ -561,33 +570,33 @@ function tierHeaders(rt) {
       rt.mode === 'cliff'    ? 'Multiplier' : 'Payout (× target)' };
   }
   if (rt.basis === 'cumulative') {
-    return { from: 'Balance from $', to: 'Balance to $', rate:
-      rt.mode === 'retro'     ? 'Rate % (applied to all volume)' :
-      rt.mode === 'wholeDeal' ? 'Rate % (of the whole deal)' : 'Rate % (of volume in band)' };
+    return { from: 'Year to date from $', to: 'Year to date to $', rate:
+      rt.mode === 'retro'     ? 'Rate % (on everything)' :
+      rt.mode === 'wholeDeal' ? 'Rate % (whole deal)' : 'Rate % (on the part in this tier)' };
   }
-  return { from: 'From $', to: 'To $', rate:
-    rt.mode === 'marginal' ? 'Rate % (of amount in band)' :
-    rt.mode === 'cliff'    ? 'Rate % (of whole deal)' : 'Amount $ (per deal)' };
+  return { from: 'Deal from $', to: 'Deal to $', rate:
+    rt.mode === 'marginal' ? 'Rate % (on the part in this tier)' :
+    rt.mode === 'cliff'    ? 'Rate % (whole deal)' : 'Amount $ (per deal)' };
 }
 
 const MODE_LABELS = {
-  value:      { marginal: 'Marginal / banded',  cliff: 'Whole-deal rate',         flat: 'Flat amount per band' },
+  value:      { marginal: 'Each tier pays its own rate', cliff: 'Whole deal at one rate', flat: 'Flat amount per tier' },
   attainment: { marginal: 'Marginal / tiered',  cliff: 'Whole-payout multiplier', flat: 'Flat payout per tier' },
-  cumulative: { marginal: 'Marginal — each band earns its own rate',
-                retro:    'Retroactive — final band re-rates all volume',
+  cumulative: { marginal: 'Each tier pays its own rate',
+                retro:    'Final tier re-pays everything',
                 wholeDeal:'Whole deal at the tier you were in' }
 };
 
 const MODE_BLURB = {
-  'value.marginal':      'Each dollar of the deal inside a band earns that band’s rate. Only the amount above a break gets the higher rate.',
-  'value.cliff':         'The band the deal lands in sets one rate, applied to the entire deal value.',
-  'value.flat':          'Any deal landing in a band pays that flat dollar amount, regardless of size.',
+  'value.marginal':      'Each part of the deal is paid at the rate of the tier it falls in. Only the amount above a tier line gets the higher rate',
+  'value.cliff':         'The tier the deal lands in sets one rate, paid on the whole deal',
+  'value.flat':          'Any deal that lands in a tier pays that flat dollar amount, whatever its size',
   'attainment.marginal': 'Each attainment point inside a tier earns that tier’s rate. Only points above a break get the accelerator.',
   'attainment.cliff':    'Crossing a tier changes the multiplier applied to the entire payout, not only the amount above it.',
   'attainment.flat':     'Landing anywhere in a tier pays that fixed share of the component target.',
-  'cumulative.marginal': 'Deals accrue into a running balance. Each dollar of that balance earns the rate of the band it falls in, so a deal that straddles a break is split across both. Rate goes up as the year builds; nothing is re-rated.',
-  'cumulative.retro':    'Deals accrue into a running balance. The band reached by the end of the period is applied to the whole period’s volume — a true-up that pays the higher rate retroactively on everything.',
-  'cumulative.wholeDeal':'Deals accrue into a running balance. Each deal pays entirely at the rate of the band the balance sat in when that deal was credited — no splitting across bands, no re-rating.'
+  'cumulative.marginal': 'Each deal adds to your year-to-date total. Every dollar is paid at the rate of the tier it lands in, so a deal that crosses into the next tier is split between the two. Your rate goes up as the year builds, and earlier deals are not re-paid',
+  'cumulative.retro':    'Each deal adds to your year-to-date total. Whatever tier you finish the period in, that rate is paid on everything credited this period',
+  'cumulative.wholeDeal':'Each deal adds to your year-to-date total. The whole deal is paid at the rate of the tier you were in when it closed, with no splitting between tiers'
 };
 
 function defaultPlan() {
@@ -601,7 +610,9 @@ function defaultPlan() {
        ($1,000,000 × 10%). Recorded for reference — with no quota components,
        commission comes entirely from the credited-ARR curve. */
     payee: { name: 'Gus Fring', id: '308', startDate: '', endDate: '',
-             prorate: false, targetIncentive: 100000 },
+             prorate: false, targetIncentive: 100000,
+             /* Display only: turns the year-to-date total into a % of quota. */
+             annualQuota: 1000000 },
 
     /* A deal must be Closed Won by the last day of the fiscal month to count
        toward it, and the band a deal earns depends on the balance before it. */
@@ -1506,8 +1517,8 @@ function fieldOptions(selected) {
 function rtOptions(selected, bases) {
   const want = [].concat(bases);
   const list = (PLAN.rateTables || []).filter(rt => want.includes(rt.basis));
-  const label = rt => rt.name + (rt.basis === 'cumulative' ? '  (cumulative)' : '');
-  return '<option value="">— rate table —</option>' +
+  const label = rt => rt.name + (rt.basis === 'cumulative' ? '  (year to date)' : '');
+  return '<option value="">— rates —</option>' +
     list.map(rt => `<option value="${esc(rt.id)}"${rt.id === selected ? ' selected' : ''}>${esc(label(rt))}</option>`).join('');
 }
 
@@ -1552,30 +1563,30 @@ function renderRateTables() {
     const b = 'rateTables.' + i;
     const h = tierHeaders(rt);
     const unit = rt.basis === 'attainment' ? '%' : '$';
-    const tagName = rt.basis === 'value' ? 'Deal value' : rt.basis === 'cumulative' ? 'Cumulative' : 'Attainment';
+    const tagName = rt.basis === 'value' ? 'Per deal' : rt.basis === 'cumulative' ? 'Year to date' : '% of quota';
     return `
     <div class="blk">
       <div class="blk-top">
         <span class="tag${rt.basis === 'attainment' ? ' grey' : ''}">${tagName}</span>
-        <input class="name" type="text" data-path="${b}.name" value="${esc(rt.name)}" aria-label="Rate table name">
+        <input class="name" type="text" data-path="${b}.name" value="${esc(rt.name)}" aria-label="Rates name">
         <select class="bare" style="max-width:250px;flex:0 1 250px" data-path="${b}.mode" data-rerender="rt">
           ${Object.keys(MODE_LABELS[rt.basis]).map(k =>
             `<option value="${k}"${rt.mode === k ? ' selected' : ''}>${esc(MODE_LABELS[rt.basis][k])}</option>`).join('')}
         </select>
-        <button class="iconbtn" data-action="del-rt" data-i="${i}" title="Remove rate table">&times;</button>
+        <button class="iconbtn" data-action="del-rt" data-i="${i}" title="Remove these rates">&times;</button>
       </div>
       <p class="sec-note" style="margin:-6px 0 12px;font-size:12.5px">${esc(MODE_BLURB[rt.basis + '.' + rt.mode] || '')}</p>
       ${rt.basis === 'cumulative' ? `
       <div class="fields" style="margin-bottom:14px">
         <div class="f">
-          <label>Accumulate separately by <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+          <label>Keep separate totals by <span style="color:var(--muted);font-weight:400">(optional)</span></label>
           <select class="bare" data-path="${b}.poolBy">${fieldOptions(rt.poolBy)}</select>
-          <p class="hint">Blank = one balance for everything.</p>
+          <p class="hint">Blank = one total for everything</p>
         </div>
         <div class="f">
-          <label>Opening balance</label>
+          <label>Already credited this year</label>
           <div class="ipt"><span class="pre">$</span><input type="number" step="any" data-path="${b}.openingBalance" data-type="number" value="${rt.openingBalance || 0}"></div>
-          <p class="hint">Credit carried in from a prior period.</p>
+          <p class="hint">Your year-to-date total before this period</p>
         </div>
       </div>` : ''}
       <div class="tbl-scroll">
@@ -1587,13 +1598,13 @@ function renderRateTables() {
                 <td class="n"><input type="number" step="any" data-path="${b}.tiers.${ti}.from" data-type="number" value="${t.from}" aria-label="From"></td>
                 <td class="n"><input type="number" step="any" data-path="${b}.tiers.${ti}.to" data-type="numOrNull" value="${t.to == null ? '' : t.to}" placeholder="∞" aria-label="To"></td>
                 <td class="n"><input type="number" step="any" data-path="${b}.tiers.${ti}.rate" data-type="number" value="${t.rate}" aria-label="Rate"></td>
-                <td class="x"><button class="iconbtn" data-action="del-tier" data-i="${i}" data-t="${ti}" title="Remove band">&times;</button></td>
+                <td class="x"><button class="iconbtn" data-action="del-tier" data-i="${i}" data-t="${ti}" title="Remove tier">&times;</button></td>
               </tr>`).join('')}
           </tbody>
         </table>
       </div>
-      <button class="btn sm" style="margin-top:10px" data-action="add-tier" data-i="${i}">+ Add band</button>
-      <span style="color:var(--muted);font-size:12px;margin-left:10px;font-family:var(--mono)">leave the last “to” blank for ∞ · units in ${unit}</span>
+      <button class="btn sm" style="margin-top:10px" data-action="add-tier" data-i="${i}">+ Add tier</button>
+      <span style="color:var(--muted);font-size:12px;margin-left:10px;font-family:var(--mono)">leave the last “to” blank for no upper limit</span>
     </div>`;
   }).join('') || '<p class="empty">No rate tables yet.</p>';
 }
@@ -1608,8 +1619,8 @@ function renderRules() {
         <span class="tag">${String(i + 1).padStart(2, '0')}</span>
         <input class="name" type="text" data-path="${b}.name" value="${esc(r.name)}" aria-label="Rule name">
         <select class="bare" style="max-width:130px;flex:0 1 130px" data-path="${b}.enabled" data-type="bool">
-          <option value="true"${r.enabled !== false ? ' selected' : ''}>Enabled</option>
-          <option value="false"${r.enabled === false ? ' selected' : ''}>Disabled</option>
+          <option value="true"${r.enabled !== false ? ' selected' : ''}>On</option>
+          <option value="false"${r.enabled === false ? ' selected' : ''}>Off</option>
         </select>
         <button class="iconbtn mv" data-action="up-rule" data-i="${i}" title="Move up" ${i === 0 ? 'disabled' : ''}>&uarr;</button>
         <button class="iconbtn mv" data-action="down-rule" data-i="${i}" title="Move down" ${i === PLAN.rules.length - 1 ? 'disabled' : ''}>&darr;</button>
@@ -1618,17 +1629,17 @@ function renderRules() {
 
       <div class="inner">
         <div class="ttl">
-          <span>When</span>
+          <span>If</span>
           <select class="bare" style="max-width:150px" data-path="${b}.match">
-            <option value="all"${r.match !== 'any' ? ' selected' : ''}>all conditions</option>
-            <option value="any"${r.match === 'any' ? ' selected' : ''}>any condition</option>
+            <option value="all"${r.match !== 'any' ? ' selected' : ''}>all of these</option>
+            <option value="any"${r.match === 'any' ? ' selected' : ''}>any of these</option>
           </select>
-          <span>match</span>
+          <span>are true</span>
         </div>
         ${(r.conditions || []).length ? `
         <div class="tbl-scroll">
           <table class="mini">
-            <thead><tr><th>Column</th><th>Test</th><th>Value</th><th class="x"></th></tr></thead>
+            <thead><tr><th>Column</th><th>Check</th><th>Value</th><th class="x"></th></tr></thead>
             <tbody>
               ${(r.conditions || []).map((c, ci) => `
                 <tr>
@@ -1642,7 +1653,7 @@ function renderRules() {
                 </tr>`).join('')}
             </tbody>
           </table>
-        </div>` : '<p class="empty" style="padding:4px 0 10px">No conditions — this rule matches every deal (catch-all).</p>'}
+        </div>` : '<p class="empty" style="padding:4px 0 10px">No conditions, so this rule fits every deal (catch-all)</p>'}
         <button class="btn sm" style="margin-top:8px" data-action="add-cond" data-i="${i}">+ Add condition</button>
       </div>
 
@@ -1650,42 +1661,42 @@ function renderRules() {
         <div class="ttl">Then</div>
         <div class="fields">
           <div class="f">
-            <label>Action</label>
+            <label>What happens</label>
             <select class="bare" data-path="${b}.action.type" data-rerender="rules">
               ${Object.keys(ACTIONS).map(k => `<option value="${k}"${a.type === k ? ' selected' : ''}>${esc(ACTIONS[k])}</option>`).join('')}
             </select>
           </div>
           ${a.type === 'exclude' ? '' : `
           <div class="f">
-            <label>${a.type === 'clawback' ? 'Column holding the ARR reversed' : 'Measure column'}</label>
+            <label>${a.type === 'clawback' ? 'Amount to take back' : 'Pay on'}</label>
             <select class="bare" data-path="${b}.action.measureField">${fieldOptions(a.measureField)}</select>
           </div>`}
           ${a.type === 'rateTable' ? `
           <div class="f">
-            <label>Rate table</label>
+            <label>Rates</label>
             <select class="bare" data-path="${b}.action.rateTableId">${rtOptions(a.rateTableId, ['value', 'cumulative'])}</select>
           </div>` : ''}
           ${a.type === 'clawback' ? `
           <div class="f">
             <label>Rate originally paid</label>
             <div class="ipt"><span class="pre">%</span><input type="number" step="any" data-path="${b}.action.clawbackRate" data-type="number" value="${a.clawbackRate || 0}"></div>
-            <p class="hint">Or take it from a column below.</p>
+            <p class="hint">Or take it from a column below</p>
           </div>
           <div class="f">
             <label>Rate column <span style="color:var(--muted);font-weight:400">(optional)</span></label>
             <select class="bare" data-path="${b}.action.clawbackRateField">${fieldOptions(a.clawbackRateField)}</select>
-            <p class="hint">Overrides the rate above when set.</p>
+            <p class="hint">Used instead of the rate above when set</p>
           </div>
           <div class="f">
-            <label>Also reduce a running balance</label>
+            <label>Also lower the year-to-date total</label>
             <select class="bare" data-path="${b}.action.reducesBalance" data-type="bool" data-rerender="rules">
-              <option value="false"${!a.reducesBalance ? ' selected' : ''}>No — reverse the payment only</option>
-              <option value="true"${a.reducesBalance ? ' selected' : ''}>Yes — restate YTD credit too</option>
+              <option value="false"${!a.reducesBalance ? ' selected' : ''}>No, take back the payment only</option>
+              <option value="true"${a.reducesBalance ? ' selected' : ''}>Yes, lower year to date too</option>
             </select>
           </div>
           ${a.reducesBalance ? `
           <div class="f">
-            <label>Balance to reduce</label>
+            <label>Year-to-date total to lower</label>
             <select class="bare" data-path="${b}.action.rateTableId">${rtOptions(a.rateTableId, ['cumulative'])}</select>
           </div>` : ''}` : ''}
           ${a.type === 'percent' ? `
@@ -1700,20 +1711,20 @@ function renderRules() {
           </div>` : ''}
           ${a.type === 'rateTable' || a.type === 'percent' ? `
           <div class="f">
-            <label>Credit uplift</label>
+            <label>Credit multiplier</label>
             <div class="ipt"><span class="pre">×</span><input type="number" step="any" data-path="${b}.action.uplift" data-type="number" value="${a.uplift == null ? 1 : a.uplift}"></div>
-            <p class="hint">Scales the measure before banding. 1 = none.</p>
+            <p class="hint">Boosts the deal's credit before rates apply. 1 = no boost</p>
           </div>
           <div class="f">
-            <label>Uplift column <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+            <label>Multiplier column <span style="color:var(--muted);font-weight:400">(optional)</span></label>
             <select class="bare" data-path="${b}.action.upliftField">${fieldOptions(a.upliftField)}</select>
-            <p class="hint">Multiplies with the value above.</p>
+            <p class="hint">Multiplies with the value above</p>
           </div>` : ''}
           ${a.type === 'exclude' ? '' : `
           <div class="f">
-            <label>Credit % column <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+            <label>Your share column <span style="color:var(--muted);font-weight:400">(optional)</span></label>
             <select class="bare" data-path="${b}.action.creditPctField">${fieldOptions(a.creditPctField)}</select>
-            <p class="hint">Splits: 100 = full credit. Blank cells count as 100.</p>
+            <p class="hint">For split deals: 100 = full credit. Blank cells count as 100</p>
           </div>`}
         </div>
       </div>
@@ -1833,21 +1844,203 @@ function renderModifiers() {
   }).join('') || '<p class="empty">No modifiers — payout is taken straight from the rules and components.</p>';
 }
 
+/* ---- plain-language display layer ---------------------------------------
+   The engine's audit speaks comp-admin (bands, pools, measures). Reps don't.
+   These helpers retell the same result in plain words from the engine's
+   structured output. Nothing here changes a number, and the raw audit is
+   still what the agent's verify step receives. */
+
+function quotaOf() { const q = num((PLAN.payee || {}).annualQuota); return q > 0 ? q : 0; }
+function ofQuota(v) { const q = quotaOf(); return q ? pct(v / q * 100, 1) : ''; }
+function quotaPct(x) { return Math.round(x / quotaOf() * 1000) / 10 + '%'; }
+const pctRange = (f, to) => to == null ? quotaPct(f) + '+' : quotaPct(f).slice(0, -1) + '–' + quotaPct(to);
+
+/* "$500,000 to $1,000,000 (50–100% of quota)" */
+function tierPlain(t) {
+  if (!t) return 'no tier';
+  const f = num(t.from), to = (t.to == null || t.to === '') ? null : num(t.to);
+  const base = to == null ? money0(f) + ' and up' : money0(f) + ' to ' + money0(to);
+  if (!quotaOf()) return base;
+  return base + ' (' + pctRange(f, to) + ' of quota)';
+}
+/* "150%+ of quota", or the dollar range when no quota is set */
+function tierShort(t) {
+  if (!t || !quotaOf()) return tierLabel(t, '$');
+  const f = num(t.from), to = (t.to == null || t.to === '') ? null : num(t.to);
+  return pctRange(f, to) + ' of quota';
+}
+
+function plainCond(c) {
+  const v = c.value == null ? '' : String(c.value).trim();
+  const isDate = /^\d{4}-\d{2}-\d{2}$/.test(v);
+  const words = isDate
+    ? { gt: 'is after', gte: 'is on or after', lt: 'is before', lte: 'is on or before' }
+    : { gt: 'is more than', gte: 'is at least', lt: 'is less than', lte: 'is at most' };
+  const o = OPS[c.op] || OPS.is;
+  return (c.field || '?') + ' ' + (words[c.op] || o.label) + (o.needsValue ? ' ' + (isDate ? fmtDate(v) : v) : '');
+}
+function ruleWhen(rule) {
+  const cs = rule.conditions || [];
+  if (!cs.length) return 'every other deal';
+  return cs.map(plainCond).join(rule.match === 'any' ? ' or ' : ' and ');
+}
+
+/* Credit that actually counted: after any multiplier and the rep's share. */
+const creditedOf = d => (d && !d.excluded && !d.unmatched) ? d.measure * d.credit / 100 : 0;
+
+function payParts(r) {
+  const out = { earned: 0, back: 0, counted: 0, notCounted: 0, clawbacks: 0, unmatched: r.unmatched };
+  r.detail.forEach(d => {
+    if (!d) return;
+    if (d.commission > 0) out.earned += d.commission; else out.back += d.commission;
+    if (d.clawback) out.clawbacks++;
+    else if (d.excluded) out.notCounted++;
+    else if (!d.unmatched) out.counted++;
+  });
+  return out;
+}
+
+function poolItemOf(r, d) {
+  const pool = d.poolKey ? r.pools.find(p => p.key === d.poolKey) : null;
+  return pool ? { pool, it: pool.items.find(x => x.i === d.i) } : {};
+}
+
+/* One deal's math in a sentence a rep can follow. */
+function plainNote(d, r) {
+  if (d.unmatched) return 'No rule fit this deal, so it paid nothing';
+  if (d.excluded) return 'Not counted this period';
+  const share = d.credit !== 100 ? ' × ' + d.credit + '% your share' : '';
+  if (d.clawback) {
+    return 'Taking back ' + money0(Math.abs(d.measure)) + ' at the ' + d.rateUsed + '% it originally paid' + share +
+      (d.poolKey ? ' · year to date lowered by ' + money0(Math.abs(d.measure)) : '');
+  }
+  const { pool, it } = poolItemOf(r, d);
+  if (it) {
+    let credit = money0(d.rawMeasure);
+    if (d.uplift !== 1) credit += ' × ' + d.uplift + ' multiplier';
+    credit += share;
+    if (d.uplift !== 1 || d.credit !== 100) credit += ' = ' + money0(it.credited);
+    const parts = it.parts || [];
+    const how = pool.rt.mode === 'retro' ? ' (the final tier you reached)'
+              : pool.rt.mode === 'wholeDeal' ? ' (the tier you were in)' : '';
+    return credit + ' credited · year to date ' + money0(it.start) + ' → ' + money0(it.end) + ' · ' +
+      (parts.map(p => money0(p.volume) + ' at ' + p.rate + '%').join(' + ') || 'no tier') + how +
+      ' = ' + money(d.commission);
+  }
+  /* per-deal rates, flat percent, fixed amount */
+  const core = String(d.note || '').split('  ·  ').pop().replace(/ @ /g, ' at ').replace(/ → /g, ' pays ');
+  let s = money0(d.rawMeasure);
+  if (d.uplift !== 1) s += ' × ' + d.uplift + ' multiplier = ' + money0(d.measure);
+  return s + ' · ' + core + share + ' = ' + money(d.commission);
+}
+
+/* The step-by-step math, in plain words. Returns [{group,label} | {label,formula,display}] */
+function plainSteps(r) {
+  const S = [];
+  const g = label => S.push({ group: true, label });
+  const st = (label, formula, display) => S.push({ label, formula, display });
+  const q = quotaOf();
+  const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+
+  if (r.dealCount) {
+    g('Your deals');
+    const acc = PLAN.accrual || {};
+    if (acc.sortField) st('Order the deals were counted',
+      'by ' + acc.sortField + (acc.direction === 'desc' ? ', newest / largest first' : ', oldest / smallest first'),
+      plural(r.dealCount, 'deal'));
+    r.byRule.forEach((s, i) => {
+      if (!s.count) return;
+      const rule = r.rules[i], a = rule.action || {};
+      const ds = r.detail.filter(d => d && d.ruleId === rule.id);
+      const label = rule.name + ' — ' + plural(s.count, 'deal');
+      if (a.type === 'exclude') st(label, ruleWhen(rule) + ' · not counted this period', money(0));
+      else if (a.type === 'clawback') st(label, ruleWhen(rule) + ' · taking back ' +
+        money0(ds.reduce((t, d) => t + Math.abs(d.measure), 0)) + ' at the rate it originally paid', money(s.commission));
+      else st(label, ruleWhen(rule) + ' · ' + money0(ds.reduce((t, d) => t + creditedOf(d), 0)) + ' credited', money(s.commission));
+    });
+    if (r.unmatched) st('Deals no rule fit — ' + r.unmatched, 'paid nothing', money(0));
+  }
+
+  r.pools.forEach(pool => {
+    const nm = (r.pools.length > 1 || pool.poolByValue)
+      ? ' · ' + pool.rt.name + (pool.poolByValue ? ' · ' + pool.poolByValue : '') : '';
+    g('Your year-to-date total' + nm);
+    if (pool.opening) st('Already credited before this period', 'earlier months, already paid' +
+      (q ? ' · ' + ofQuota(pool.opening) + ' of quota' : ''), money0(pool.opening));
+    st('Credited this period', plural(pool.items.length, 'deal') + ', after multipliers and your share', money0(pool.volume));
+    if (pool.reductions) st('Taken back from year to date', 'clawed-back deals no longer count', money0(-pool.reductions));
+    st('Year-to-date total',
+      (pool.opening ? money0(pool.opening) + ' + ' : '') + money0(pool.volume) +
+      (pool.reductions ? ' − ' + money0(pool.reductions) : '') +
+      (q ? ' · ' + ofQuota(pool.balance) + ' of your ' + money0(q) + ' quota' : ''),
+      money0(pool.balance));
+    if (pool.retro) {
+      st('Everything paid at your final tier', 'reached ' + tierPlain(findTier(pool.tiers, pool.balance)) +
+        ' · ' + money0(pool.volume) + ' at ' + pool.retro.rate + '%', money(pool.commission));
+    } else {
+      pool.bands.forEach(bd => st('Tier ' + tierPlain(pool.tiers[bd.ti]),
+        money0(bd.volume) + ' credited in this tier at ' + bd.rate + '%', money(bd.commission)));
+      st('Commission from year-to-date tiers', 'the tiers above added together', money(pool.commission));
+    }
+  });
+
+  /* Quota bonuses and adjustments are hidden in this version of the page, but
+     if a plan has them they still count, so show the engine's own steps. */
+  const simple = !r.components.length && !r.modsApplied.length;
+  if (!simple) {
+    let cur = null;
+    r.audit.forEach(s => {
+      if (s.group) {
+        cur = s.label;
+        if (cur === 'Quota-based commission') g('Quota bonus');
+        if (cur === 'Modifiers & total' && r.modsApplied.length) g('Adjustments');
+        return;
+      }
+      if (cur === 'Quota-based commission' ||
+          (cur === 'Modifiers & total' && s.label !== 'Subtotal before modifiers' && s.label !== 'Total variable earnings'))
+        st(s.label, s.formula, s.display);
+    });
+  }
+
+  g('Your payout');
+  const ps = payParts(r);
+  st('Commission earned', 'every deal that counted', money(ps.earned));
+  if (ps.back) st('Clawbacks', 'commission taken back', money(ps.back));
+  st('Your payout', simple
+      ? (ps.back ? money(ps.earned) + ' − ' + money(-ps.back) : 'commission earned')
+      : 'including the quota bonus and adjustments above',
+    money(r.variable));
+  return S;
+}
+
 function renderOutputs() {
   const r = calculate(PLAN, DATA);
   window.LAST_RESULT = r;
 
+  const ps = payParts(r);
   $('#out-variable').textContent = money0(r.variable);
-  $('#out-deals').textContent = money0(r.dealTotal);
-  $('#out-quota').textContent = money0(r.quotaTotal);
-  $('#out-count').textContent = String(r.dealCount);
+  $('#out-deals').textContent = money0(ps.earned);
+  $('#out-quota').textContent = money0(ps.back);
+  const ytd = r.pools[0];
+  if (ytd && quotaOf()) {
+    $('#lbl-count').textContent = 'Year to date vs quota';
+    $('#out-count').textContent = ofQuota(ytd.balance);
+  } else {
+    $('#lbl-count').textContent = 'Deals counted';
+    $('#out-count').textContent = String(ps.counted);
+  }
 
   const bits = [];
-  if (r.dealCount) bits.push(r.dealCount + ' deals · ' + r.byRule.filter(x => x.count).length + ' rules engaged');
+  if (r.dealCount) {
+    bits.push(ps.counted + ' deal' + (ps.counted === 1 ? '' : 's') + ' counted');
+    if (ps.notCounted) bits.push(ps.notCounted + ' not counted this period');
+    if (ps.clawbacks) bits.push(ps.clawbacks + ' clawback' + (ps.clawbacks === 1 ? '' : 's'));
+    if (ps.unmatched) bits.push(ps.unmatched + ' no rule fit');
+  }
   r.components.forEach(c => bits.push(pct(c.attainment, 1) + ' attainment'));
   r.modsApplied.forEach(m => bits.push(m.label));
   if (r.prorate && r.proration < 1) bits.push(pct(r.proration * 100, 1) + ' of period');
-  $('#out-summary').textContent = bits.join(' · ') || 'Load deal data or add a quota component to begin';
+  $('#out-summary').textContent = bits.join(' · ') || 'Upload your deals to begin';
 
   $('#hint-ti').textContent = (PLAN.components || []).length
     ? 'Opportunity for quota-based components'
@@ -1860,7 +2053,7 @@ function renderOutputs() {
   const rw = $('#rule-warn');
   const hasCatchAll = (PLAN.rules || []).some(x => x.enabled !== false && !(x.conditions || []).length);
   if (DATA.rows.length && !hasCatchAll && r.unmatched) {
-    rw.hidden = false; rw.textContent = '⚠ ' + r.unmatched + ' deal(s) matched no rule. Add a rule with no conditions at the bottom to catch them.';
+    rw.hidden = false; rw.textContent = '⚠ ' + r.unmatched + ' deal(s) fit no rule and paid nothing. Add a rule with no conditions at the bottom to catch them';
   } else rw.hidden = true;
 
   const ww = $('#weight-warn');
@@ -1874,102 +2067,110 @@ function renderOutputs() {
   if (r.pools.length) {
     $('#pool-list').innerHTML = r.pools.map(pool => {
       const nm = esc(pool.rt.name) + (pool.poolByValue ? ' <span class="chip">' + esc(pool.poolByValue) + '</span>' : '');
+      const q = quotaOf();
       return `
       <div class="blk">
         <div class="blk-top">
-          <span class="tag">${esc(MODE_LABELS.cumulative[pool.rt.mode] ? pool.rt.mode === 'retro' ? 'Retro' : pool.rt.mode === 'wholeDeal' ? 'Whole deal' : 'Marginal' : 'Marginal')}</span>
+          <span class="tag">${pool.rt.mode === 'retro' ? 'Final tier re-pays all' : pool.rt.mode === 'wholeDeal' ? 'Whole deal per tier' : 'Tiered'}</span>
           <strong style="font-size:15px">${nm}</strong>
           <span style="margin-left:auto;font-family:var(--mono);font-size:13px;color:var(--blue-3)">${money(pool.commission)}</span>
         </div>
         <div class="fields" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
-          ${pool.opening ? `<div class="f"><label>Opening balance</label><div style="font-family:var(--mono);font-size:15px">${money0(pool.opening)}</div></div>` : ''}
-          <div class="f"><label>Volume credited</label><div style="font-family:var(--mono);font-size:15px">${money0(pool.volume)}</div></div>
-          <div class="f"><label>Ending balance</label><div style="font-family:var(--mono);font-size:15px">${money0(pool.balance)}</div></div>
-          <div class="f"><label>Final band</label><div style="font-family:var(--mono);font-size:15px;color:var(--blue)">${esc(pool.finalTier)}</div></div>
-          <div class="f"><label>Deals accrued</label><div style="font-family:var(--mono);font-size:15px">${pool.items.length}</div></div>
+          ${pool.opening ? `<div class="f"><label>Before this period</label><div style="font-family:var(--mono);font-size:15px">${money0(pool.opening)}</div></div>` : ''}
+          <div class="f"><label>Credited this period</label><div style="font-family:var(--mono);font-size:15px">${money0(pool.volume)}</div></div>
+          <div class="f"><label>Year-to-date total</label><div style="font-family:var(--mono);font-size:15px">${money0(pool.balance)}</div></div>
+          ${q ? `<div class="f"><label>% of quota</label><div style="font-family:var(--mono);font-size:15px;color:var(--blue)">${ofQuota(pool.balance)}</div></div>` : ''}
+          <div class="f"><label>Tier reached</label><div style="font-family:var(--mono);font-size:15px;color:var(--blue)">${esc(tierShort(findTier(pool.tiers, pool.balance)))}</div></div>
+          <div class="f"><label>Deals counted</label><div style="font-family:var(--mono);font-size:15px">${pool.items.length}</div></div>
         </div>
         <div class="inner">
-          <div class="ttl">Band breakdown</div>
+          <div class="ttl">What each tier paid</div>
           <div class="tbl-scroll">
             <table>
-              <thead><tr><th>Band</th><th class="n">Volume</th><th class="n">Rate</th><th class="n">Commission</th></tr></thead>
+              <thead><tr><th>Tier</th><th class="n">Credited</th><th class="n">Rate</th><th class="n">Commission</th></tr></thead>
               <tbody>
-                ${pool.bands.map(bd => `<tr><td>${esc(bd.label)}</td><td class="n">${money0(bd.volume)}</td><td class="n">${bd.rate}%</td><td class="n">${money(bd.commission)}</td></tr>`).join('')}
-                <tr><td colspan="3"><strong>Pool total</strong></td><td class="n"><strong>${money(pool.commission)}</strong></td></tr>
+                ${pool.bands.map(bd => `<tr><td>${esc(tierPlain(pool.tiers[bd.ti]))}</td><td class="n">${money0(bd.volume)}</td><td class="n">${bd.rate}%</td><td class="n">${money(bd.commission)}</td></tr>`).join('')}
+                <tr><td colspan="3"><strong>Total</strong></td><td class="n"><strong>${money(pool.commission)}</strong></td></tr>
               </tbody>
             </table>
           </div>
-          ${pool.retro ? `<div class="callout" style="margin-top:12px"><span>ⓘ</span><div><b>Retroactive true-up.</b>
-            Ending balance reached ${esc(pool.retro.tier)}, so all ${money0(pool.volume)} of volume was re-rated at ${pool.retro.rate}%.
-            Paid as-accrued, the same deals would have earned ${money(pool.retro.asAccrued)} — a true-up of ${money(pool.commission - pool.retro.asAccrued)}.</div></div>` : ''}
+          ${pool.retro ? `<div class="callout" style="margin-top:12px"><span>ⓘ</span><div><b>Everything paid at your final tier.</b>
+            Your year-to-date total reached ${esc(tierPlain(findTier(pool.tiers, pool.balance)))}, so all ${money0(pool.volume)} credited this period was paid at ${pool.retro.rate}%.
+            At each tier's own rate the same deals would have paid ${money(pool.retro.asAccrued)}, a difference of ${money(pool.commission - pool.retro.asAccrued)}.</div></div>` : ''}
         </div>
       </div>`;
     }).join('');
   }
 
   /* statement */
-  let html = '<thead><tr><th>Line</th><th class="n">Deals</th><th class="n">Measure</th><th class="n">Rate</th><th class="n">Amount</th></tr></thead><tbody>';
+  const simple = !r.components.length && !r.modsApplied.length;
+  let html = '<thead><tr><th>What</th><th class="n">Deals</th><th class="n">Credited</th><th class="n">Rate</th><th class="n">Amount</th></tr></thead><tbody>';
   if (r.dealCount) {
-    html += '<tr class="sec"><td colspan="5">Deal-based</td></tr>';
+    html += '<tr class="sec"><td colspan="5">Deals</td></tr>';
     r.byRule.forEach((s, i) => {
       if (!s.count) return;
       const rule = r.rules[i], a = rule.action || {};
       const rtRef = (PLAN.rateTables || []).find(x => x.id === a.rateTableId);
       const isClawback = a.type === 'clawback';
-      const pool = !isClawback && rtRef && rtRef.basis === 'cumulative'
-        ? r.pools.find(pl => pl.rt.id === rtRef.id) : null;
+      const isPool = !isClawback && a.type === 'rateTable' && rtRef && rtRef.basis === 'cumulative';
+      const ds = r.detail.filter(d => d && d.ruleId === rule.id);
 
-      /* a clawback recovers at the rate originally paid, which may differ row
-         to row when it is read from a column */
-      let cbRate = '';
-      if (isClawback) {
-        const used = [];
-        r.detail.forEach(d => { if (d && d.ruleId === rule.id && d.rateUsed != null && used.indexOf(d.rateUsed) < 0) used.push(d.rateUsed); });
-        cbRate = used.length === 1 ? used[0] + '%' : used.length ? 'varies' : '—';
-      }
+      /* the rates this rule's deals actually hit: one rate, or a range */
+      const used = [];
+      ds.forEach(d => {
+        if (isClawback) { if (d.rateUsed != null && used.indexOf(d.rateUsed) < 0) used.push(d.rateUsed); return; }
+        const { it } = poolItemOf(r, d);
+        ((it && it.parts) || []).forEach(p => { if (used.indexOf(p.rate) < 0) used.push(p.rate); });
+      });
+      const range = !used.length ? '—' : Math.min(...used) === Math.max(...used)
+        ? used[0] + '%' : Math.min(...used) + '–' + Math.max(...used) + '%';
 
       const rate = a.type === 'percent' ? num(a.percent) + '%'
                  : a.type === 'fixed' ? money0(num(a.amount))
                  : a.type === 'exclude' ? '—'
-                 : isClawback ? cbRate
-                 : pool ? pool.finalTier
-                 : 'table';
-      const sub = isClawback
-        ? 'Recovered at the rate originally paid'
-        : pool
-          ? 'Cumulative · ' + esc(rtRef.name) + ' · balance ' + money0(pool.balance)
-          : esc(ACTIONS[a.type] || '');
+                 : isClawback || isPool ? range
+                 : 'per deal';
+      const boost = (a.type === 'rateTable' || a.type === 'percent') && a.uplift != null && a.uplift !== '' && num(a.uplift) !== 1
+        ? 'Credit × ' + num(a.uplift) + ' · ' : '';
+      const sub = isClawback ? 'Taken back at the rate it originally paid'
+        : a.type === 'exclude' ? 'Not counted this period'
+        : isPool ? boost + 'Paid on your year-to-date rates'
+        : boost + esc(ACTIONS[a.type] || '');
+      const credited = a.type === 'exclude' ? '—' : money0(ds.reduce((t, d) => t + creditedOf(d), 0));
       html += `<tr><td><strong>${esc(s.name)}</strong><div class="s2">${sub}</div></td>
-               <td class="n">${s.count}</td><td class="n">${money0(s.measure)}</td><td class="n">${rate}</td><td class="n">${money(s.commission)}</td></tr>`;
+               <td class="n">${s.count}</td><td class="n">${credited}</td><td class="n" style="white-space:nowrap">${rate}</td><td class="n">${money(s.commission)}</td></tr>`;
     });
-    if (r.unmatched) html += `<tr><td style="color:var(--red)">Unmatched deals</td><td class="n">${r.unmatched}</td><td class="n">—</td><td class="n">—</td><td class="n">$0.00</td></tr>`;
-    html += `<tr><td colspan="4"><strong>Deal subtotal</strong></td><td class="n"><strong>${money(r.byRule.reduce((s2, x) => s2 + x.commission, 0))}</strong></td></tr>`;
+    if (r.unmatched) html += `<tr><td style="color:var(--red)">No rule fit</td><td class="n">${r.unmatched}</td><td class="n">—</td><td class="n">—</td><td class="n">$0.00</td></tr>`;
+    if (!simple) html += `<tr><td colspan="4"><strong>Deal subtotal</strong></td><td class="n"><strong>${money(r.byRule.reduce((s2, x) => s2 + x.commission, 0))}</strong></td></tr>`;
   }
   if (r.components.length) {
-    html += '<tr class="sec"><td colspan="5">Quota-based</td></tr>';
+    html += '<tr class="sec"><td colspan="5">Quota bonus</td></tr>';
     r.components.forEach(c => {
       html += `<tr><td><strong>${esc(c.name)}</strong><div class="s2">${c.weight}% weight · ${esc(c.note)}${c.capped ? ' · capped' : ''}</div></td>
                <td class="n">—</td><td class="n">${money0(c.actual)}</td><td class="n">${pct(c.payoutPct)}</td><td class="n">${money(c.payout)}</td></tr>`;
     });
-    html += `<tr><td colspan="4"><strong>Quota subtotal</strong></td><td class="n"><strong>${money(r.components.reduce((s2, c) => s2 + c.payout, 0))}</strong></td></tr>`;
+    html += `<tr><td colspan="4"><strong>Quota bonus subtotal</strong></td><td class="n"><strong>${money(r.components.reduce((s2, c) => s2 + c.payout, 0))}</strong></td></tr>`;
   }
-  html += '<tr class="sec"><td colspan="5">Modifiers &amp; total</td></tr>';
-  html += `<tr><td colspan="4">Subtotal before modifiers</td><td class="n">${money(r.subtotal)}</td></tr>`;
-  r.modsApplied.forEach(m => {
-    html += `<tr><td><strong>${esc(m.name)}</strong><div class="s2">${esc(m.label)} · ${esc(m.scope)}</div></td>
-             <td class="n">—</td><td class="n">—</td><td class="n">${mult(m.factor)}</td><td class="n">${money(m.after)}</td></tr>`;
-  });
-  html += `<tr class="total"><td colspan="4">Total variable earnings</td><td class="n">${money(r.variable)}</td></tr></tbody>`;
+  if (r.modsApplied.length) {
+    html += '<tr class="sec"><td colspan="5">Adjustments</td></tr>';
+    html += `<tr><td colspan="4">Before adjustments</td><td class="n">${money(r.subtotal)}</td></tr>`;
+    r.modsApplied.forEach(m => {
+      html += `<tr><td><strong>${esc(m.name)}</strong><div class="s2">${esc(m.label)} · ${esc(m.scope)}</div></td>
+               <td class="n">—</td><td class="n">—</td><td class="n">${mult(m.factor)}</td><td class="n">${money(m.after)}</td></tr>`;
+    });
+  }
+  html += `<tr class="total"><td colspan="4">Your payout</td><td class="n">${money(r.variable)}</td></tr></tbody>`;
   $('#stmt').innerHTML = html;
 
   /* audit */
-  $('#audit').innerHTML = r.audit.map(s => s.group
+  let stepNo = 0;
+  $('#audit').innerHTML = plainSteps(r).map(s => s.group
     ? `<div class="step group"><span class="sn"></span><div><p class="sl">${esc(s.label)}</p></div><span></span></div>`
-    : `<div class="step"><span class="sn">${String(s.n).padStart(2, '0')}</span>
+    : `<div class="step"><span class="sn">${String(++stepNo).padStart(2, '0')}</span>
          <div><p class="sl">${esc(s.label)}</p><p class="sf">${esc(s.formula)}</p></div>
          <span class="sv">${esc(s.display)}</span></div>`).join('');
   $('#audit').insertAdjacentHTML('beforeend',
-    '<div class="callout"><span>ⓘ</span><div><b>Every figure is traceable.</b> Each step shows the formula and the values behind it, in the order the engine applied them. Line-level detail is in section 09.</div></div>');
+    '<div class="callout"><span>ⓘ</span><div><b>Every number can be checked.</b> Each step shows the math behind it, in the order it was worked out. Each deal\'s own math is in the deal-by-deal breakdown below.</div></div>');
   if (r.warnings.length) {
     $('#audit').insertAdjacentHTML('beforeend',
       '<div class="callout err"><span>⚠</span><div>' + r.warnings.map(esc).join('<br>') + '</div></div>');
@@ -1980,12 +2181,12 @@ function renderOutputs() {
     const cols = DATA.columns;
     $('#detail-tbl').innerHTML =
       '<thead><tr><th class="n">#</th>' + cols.map(c => `<th>${esc(c)}</th>`).join('') +
-      '<th>Rule matched</th><th>Calculation</th><th class="n">Credit</th><th class="n">Commission</th></tr></thead><tbody>' +
+      '<th>Counted as</th><th>How it was worked out</th><th class="n">Your share</th><th class="n">Commission</th></tr></thead><tbody>' +
       r.detail.map(d => `<tr>
           <td class="n">${d.i + 1}</td>
           ${cols.map(c => `<td>${esc(d.row[c])}</td>`).join('')}
-          <td${d.unmatched ? ' style="color:var(--red)"' : ''}>${esc(d.ruleName)}</td>
-          <td style="white-space:normal;min-width:190px">${esc(d.note)}</td>
+          <td${d.unmatched ? ' style="color:var(--red)"' : ''}>${esc(d.unmatched ? 'No rule fit' : d.ruleName)}</td>
+          <td style="white-space:normal;min-width:260px">${esc(plainNote(d, r))}</td>
           <td class="n">${d.credit}%</td>
           <td class="n" style="color:var(--blue-3)">${money(d.commission)}</td>
         </tr>`).join('') +
@@ -2273,7 +2474,7 @@ $('#btn-sample').addEventListener('click', () => {
   PLAN = defaultPlan();
   loadCSVText(SAMPLE_CSV, 'sample-deals.csv');
   renderAll();
-  toast('Sample plan and deals loaded');
+  toast('Example plan and deals loaded');
 });
 $('#btn-reset').addEventListener('click', () => {
   PLAN = defaultPlan(); DATA = { name: '', columns: [], rows: [] };
@@ -2299,25 +2500,36 @@ $('#btn-load-json').addEventListener('click', () => {
 
 $('#btn-copy-detail').addEventListener('click', () => {
   const r = window.LAST_RESULT || calculate(PLAN, DATA);
-  const cols = DATA.columns.concat(['Rule matched', 'Calculation', 'Credit %', 'Commission']);
+  const cols = DATA.columns.concat(['Counted as', 'How it was worked out', 'Your share %', 'Commission']);
   const rows = r.detail.map(d => {
     const o = {};
     DATA.columns.forEach(c => { o[c] = d.row[c]; });
-    o['Rule matched'] = d.ruleName; o['Calculation'] = d.note;
-    o['Credit %'] = d.credit; o['Commission'] = d.commission.toFixed(2);
+    o['Counted as'] = d.unmatched ? 'No rule fit' : d.ruleName; o['How it was worked out'] = plainNote(d, r);
+    o['Your share %'] = d.credit; o['Commission'] = d.commission.toFixed(2);
     return o;
   });
-  copy(toCSV(cols, rows), 'Deal detail copied as CSV');
+  copy(toCSV(cols, rows), 'Deal breakdown copied as CSV');
 });
 
-function auditMarkdown(r) {
+/* plain = the rep-facing wording (Copy button). Without it this is the raw
+   engine audit, which is what the agent's verify step is sent. */
+function auditMarkdown(r, plain) {
   const L = [
     '# ' + (PLAN.meta.planName || 'Commission calculation'), '',
-    'Payee: ' + (PLAN.payee.name || '—') + (PLAN.payee.id ? ' (' + PLAN.payee.id + ')' : ''),
+    (plain ? 'Rep: ' : 'Payee: ') + (PLAN.payee.name || '—') + (PLAN.payee.id ? ' (' + PLAN.payee.id + ')' : ''),
     'Period: ' + fmtDate(PLAN.meta.periodStart) + ' – ' + fmtDate(PLAN.meta.periodEnd),
     'Deal data: ' + (DATA.name || 'none') + ' — ' + DATA.rows.length + ' rows',
-    'Generated: ' + new Date().toISOString(), '', '## Audit trail', ''
+    'Generated: ' + new Date().toISOString(), '', plain ? '## Step-by-step math' : '## Audit trail', ''
   ];
+  if (plain) {
+    let k = 0;
+    plainSteps(r).forEach(s => {
+      if (s.group) L.push('', '### ' + s.label, '');
+      else L.push(String(++k).padStart(2, '0') + '. **' + s.label + '** — ' + s.formula + ' = **' + s.display + '**');
+    });
+    if (r.warnings.length) L.push('', '## Warnings', '', ...r.warnings.map(x => '- ' + x));
+    return L.join('\n');
+  }
   r.audit.forEach(s => {
     if (s.group) L.push('', '### ' + s.label, '');
     else L.push(String(s.n).padStart(2, '0') + '. **' + s.label + '** — `' + s.formula + '` = **' + s.display + '**');
@@ -2331,7 +2543,7 @@ function auditMarkdown(r) {
 }
 
 $('#btn-copy-audit').addEventListener('click', () => {
-  copy(auditMarkdown(window.LAST_RESULT || calculate(PLAN, DATA)), 'Audit trail copied as Markdown');
+  copy(auditMarkdown(window.LAST_RESULT || calculate(PLAN, DATA), true), 'Step-by-step math copied');
 });
 
 /* ------------------------------ 7. AGENT ------------------------------- */
