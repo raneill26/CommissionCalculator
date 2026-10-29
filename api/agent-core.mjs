@@ -19,7 +19,7 @@
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const API_VERSION = '2023-06-01';
-const DEFAULT_MODEL = 'claude-opus-5-5';
+const DEFAULT_MODEL = 'claude-sonnet-5-5';
 
 const MAX_DOCUMENT_CHARS = 60000;
 const MAX_BODY_BYTES = 400000;
