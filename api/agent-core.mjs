@@ -370,15 +370,62 @@ export async function handle(request, env) {
     ? verifyMessages(document, body.plan || {}, String(body.audit || '').slice(0, 40000), String(body.result || '').slice(0, 4000))
     : draftMessages(document, Array.isArray(body.columns) ? body.columns : []);
 
+  /* tool_choice is 'auto', not forced. Opus 5.5 and Sonnet 5.5 reject
+     tool_choice 'tool' / 'any' with a 400, and 'auto' works on every model.
+     With a single tool offered and the instruction below, the model answers
+     through the tool; if it replies in prose instead, it gets one nudge. */
   const payload = {
     model: env.MODEL || DEFAULT_MODEL,
     max_tokens: 8000,
-    system: SHARED_CONTRACT,
+    system: SHARED_CONTRACT + '\n\nRespond only by calling the ' + tool.name +
+            ' tool, exactly once. Do not answer in plain text.',
     messages,
     tools: [tool],
-    tool_choice: { type: 'tool', name: tool.name, disable_parallel_tool_use: true }
+    tool_choice: { type: 'auto', disable_parallel_tool_use: true }
   };
 
+  const started = Date.now();
+  let out = await callAnthropic(env, payload);
+  if (out.error) return json({ error: out.error }, out.status, origin);
+  let data = out.data;
+  const usage = { input_tokens: 0, output_tokens: 0 };
+  const addUsage = d => {
+    usage.input_tokens += (d.usage && d.usage.input_tokens) || 0;
+    usage.output_tokens += (d.usage && d.usage.output_tokens) || 0;
+  };
+  addUsage(data);
+
+  const findBlock = d => (d.content || []).find(c => c.type === 'tool_use' && c.name === tool.name);
+  let block = findBlock(data);
+
+  /* One nudge, only if there is time left inside the host's request limit
+     (Netlify synchronous functions stop at 30 seconds). */
+  if (!block && data.stop_reason !== 'max_tokens' && Date.now() - started < 12000) {
+    out = await callAnthropic(env, Object.assign({}, payload, {
+      messages: messages.concat(
+        { role: 'assistant', content: data.content && data.content.length ? data.content : [{ type: 'text', text: '(no answer)' }] },
+        { role: 'user', content: 'Call the ' + tool.name + ' tool now with your answer. Do not reply in text.' })
+    }));
+    if (out.error) return json({ error: out.error }, out.status, origin);
+    data = out.data; addUsage(data);
+    block = findBlock(data);
+  }
+
+  if (!block) {
+    return json({ error: data.stop_reason === 'max_tokens'
+      ? 'The model ran out of room before finishing the configuration. Try a shorter plan document.'
+      : 'The model did not return a configuration. Try again.' }, 502, origin);
+  }
+
+  return json({
+    mode,
+    result: block.input,
+    usage,
+    model: data.model || payload.model
+  }, 200, origin);
+}
+
+async function callAnthropic(env, payload) {
   let upstream;
   try {
     upstream = await fetch(API_URL, {
@@ -391,26 +438,15 @@ export async function handle(request, env) {
       body: JSON.stringify(payload)
     });
   } catch (e) {
-    return json({ error: 'Could not reach the Anthropic API.' }, 502, origin);
+    return { error: 'Could not reach the Anthropic API.', status: 502 };
   }
 
   const text = await upstream.text();
   if (!upstream.ok) {
     let detail = text.slice(0, 500);
     try { detail = (JSON.parse(text).error || {}).message || detail; } catch (e) { /* keep raw */ }
-    return json({ error: 'Anthropic API returned ' + upstream.status + ': ' + detail }, upstream.status, origin);
+    return { error: 'Anthropic API returned ' + upstream.status + ': ' + detail, status: upstream.status };
   }
-
-  let data;
-  try { data = JSON.parse(text); } catch (e) { return json({ error: 'Anthropic API returned unparseable JSON.' }, 502, origin); }
-
-  const block = (data.content || []).find(c => c.type === 'tool_use' && c.name === tool.name);
-  if (!block) return json({ error: 'The model did not return a configuration.' }, 502, origin);
-
-  return json({
-    mode,
-    result: block.input,
-    usage: data.usage || null,
-    model: data.model || payload.model
-  }, 200, origin);
+  try { return { data: JSON.parse(text) }; }
+  catch (e) { return { error: 'Anthropic API returned unparseable JSON.', status: 502 }; }
 }
